@@ -1,0 +1,184 @@
+# =============================================================================
+# Momo · root .gitignore
+#
+# 子目录（apps/desktop、apps/desktop/src-tauri 等）已有各自的 .gitignore；
+# 这里收的是全仓通用 / 跨子项目 / 未来子项目（Android、Python sandbox、后端）
+# 共用的忽略规则。新增子项目时优先维护此处。
+# =============================================================================
+
+# ---------- OS ----------
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+$RECYCLE.BIN/
+
+# ---------- 编辑器 / IDE ----------
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json.example
+.vs/
+*.swp
+*.swo
+*~
+*.bak
+.history/
+.fleet/
+.zed/
+
+# ---------- 日志与崩溃 ----------
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+crash.log
+hs_err_pid*
+
+# ---------- 环境变量 / 机密 ----------
+# 真实密钥永远不要进库；样板留 .env.example
+.env
+.env.*
+!.env.example
+!.env.*.example
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+.secrets/
+secrets.local.*
+*.kdbx
+
+# ---------- Node.js / 前端 ----------
+node_modules/
+**/node_modules/
+.npm/
+.yarn/
+.pnp.*
+.pnpm-store/
+.cache/
+.parcel-cache/
+.vite/
+.turbo/
+.next/
+.nuxt/
+.svelte-kit/
+.astro/
+dist/
+dist-ssr/
+build/
+out/
+**/dist/
+**/build/
+*.local
+.eslintcache
+.stylelintcache
+storybook-static/
+
+# ---------- TypeScript ----------
+*.tsbuildinfo
+.tscache/
+
+# ---------- 测试 / 覆盖率 ----------
+coverage/
+*.lcov
+.nyc_output/
+.vitest-cache/
+playwright-report/
+test-results/
+e2e-results/
+
+# ---------- Rust / Cargo / Tauri ----------
+target/
+**/target/
+Cargo.lock.bak
+**/*.rs.bk
+*.pdb
+# Tauri 自动生成的 schema
+**/src-tauri/gen/schemas/
+
+# ---------- Android (apps/android 预留) ----------
+.gradle/
+local.properties
+captures/
+.externalNativeBuild/
+.cxx/
+*.apk
+*.aab
+*.ap_
+*.dex
+release/
+*.jks
+*.keystore
+keystore.properties
+google-services.json
+
+# ---------- Python (沙箱 / 工具脚本预留) ----------
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg
+*.egg-info/
+.eggs/
+.venv/
+venv/
+env/
+.venv*/
+.tox/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.pyre/
+.pytype/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# ---------- 后端 / 数据库 / 容器 ----------
+*.sqlite
+*.sqlite3
+*.sqlite-journal
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+dump.rdb
+*.dump
+*.bak.sql
+.docker/
+docker-volumes/
+.kube/
+kubeconfig
+kubeconfig.*
+
+# ---------- AI / Agent 运行时副产物 ----------
+.agent-cache/
+.agent-runs/
+.eval-runs/
+*.prompt-cache
+.ralph-loop/
+.claude/
+.claude-flow/
+.mcp.json
+CLAUDE.md
+
+# ---------- 工具临时 / 杂项 ----------
+tmp/
+temp/
+*.tmp
+*.pid
+*.seed
+*.pid.lock
+.serverless/
+.cache-loader/
+.benchmarks/
