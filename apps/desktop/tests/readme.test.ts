@@ -17,6 +17,10 @@ describe("desktop README", () => {
     expect(readme).toContain("saveSyncState");
     expect(readme).toContain("buildDeltaPushFromPendingChanges");
     expect(readme).toContain("applyDeltaPushResponse");
+    expect(readme).toContain("applyDeltaPullResponse");
+    expect(readme).toContain("applyRemoteTask");
+    expect(readme).toContain("deleteRemoteTask");
+    expect(readme).toContain("without writing `local_changes`");
     expect(readme).toContain("runLocalSyncSimulation");
     expect(readme).toContain("createLocalSyncRunner");
     expect(readme).toContain("default Settings route");

@@ -25,6 +25,8 @@ export interface TaskRepository {
   updateTask(id: string, patch: UpdateTaskInput): Promise<Task>;
   setStatus(id: string, status: TaskStatus): Promise<Task>;
   deleteTask(id: string): Promise<void>;
+  applyRemoteTask(task: Task): Promise<void>;
+  deleteRemoteTask(id: string): Promise<void>;
   listPendingChanges(): Promise<LocalChange[]>;
   markChangeSynced(id: string, syncedAt?: Date): Promise<void>;
   getSyncState(): Promise<SyncState>;
@@ -268,6 +270,35 @@ export function createTaskRepository(
       await recordLocalChange(db, taskId, "task.delete", { id: taskId }, timestamp);
     },
 
+    async applyRemoteTask(task) {
+      await init();
+      const db = await getDb();
+      await db.execute(
+        `INSERT INTO tasks (
+          id, title, notes, status, priority, due_at, estimate_min, tags,
+          created_at, updated_at, completed_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+        ON CONFLICT(id) DO UPDATE SET
+          title = excluded.title,
+          notes = excluded.notes,
+          status = excluded.status,
+          priority = excluded.priority,
+          due_at = excluded.due_at,
+          estimate_min = excluded.estimate_min,
+          tags = excluded.tags,
+          created_at = excluded.created_at,
+          updated_at = excluded.updated_at,
+          completed_at = excluded.completed_at`,
+        taskParams(task),
+      );
+    },
+
+    async deleteRemoteTask(taskId) {
+      await init();
+      const db = await getDb();
+      await db.execute("DELETE FROM tasks WHERE id = $1", [taskId]);
+    },
+
     async listPendingChanges() {
       await init();
       const db = await getDb();
@@ -415,6 +446,22 @@ function createId() {
     return globalThis.crypto.randomUUID();
   }
   return `task-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+function taskParams(task: Task) {
+  return [
+    task.id,
+    task.title,
+    task.notes,
+    task.status,
+    task.priority,
+    task.dueAt,
+    task.estimateMin,
+    JSON.stringify(task.tags),
+    task.createdAt,
+    task.updatedAt,
+    task.completedAt,
+  ];
 }
 
 const SCHEMA = [

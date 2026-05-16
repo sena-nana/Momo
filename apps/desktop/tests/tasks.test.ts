@@ -258,6 +258,52 @@ describe("TaskRepository", () => {
       updatedAt: null,
     });
   });
+
+  it("applies pulled remote task changes without recording local changes", async () => {
+    const db = new RecordingDatabase();
+    const repository = createTaskRepository(() => Promise.resolve(db));
+
+    await repository.applyRemoteTask({
+      id: "task-remote",
+      title: "Remote task",
+      notes: "From sync",
+      status: "active",
+      priority: 2,
+      dueAt: "2026-05-17T02:30:00.000Z",
+      estimateMin: 25,
+      tags: ["sync"],
+      createdAt: "2026-05-16T10:00:00.000Z",
+      updatedAt: "2026-05-16T11:00:00.000Z",
+      completedAt: null,
+    });
+
+    expect(db.paramsForSql("INSERT INTO tasks")).toEqual([
+      "task-remote",
+      "Remote task",
+      "From sync",
+      "active",
+      2,
+      "2026-05-17T02:30:00.000Z",
+      25,
+      '["sync"]',
+      "2026-05-16T10:00:00.000Z",
+      "2026-05-16T11:00:00.000Z",
+      null,
+    ]);
+    expect(db.calls.some((call) => call.sql.includes("INSERT INTO local_changes")))
+      .toBe(false);
+  });
+
+  it("applies pulled remote task deletions without recording local changes", async () => {
+    const db = new RecordingDatabase();
+    const repository = createTaskRepository(() => Promise.resolve(db));
+
+    await repository.deleteRemoteTask("task-remote");
+
+    expect(db.paramsForSql("DELETE FROM tasks")).toEqual(["task-remote"]);
+    expect(db.calls.some((call) => call.sql.includes("INSERT INTO local_changes")))
+      .toBe(false);
+  });
 });
 
 function task(overrides: Partial<ReturnType<typeof baseTask>>) {

@@ -1,13 +1,16 @@
 import {
   createListTaskConflictsRequest,
   createDeltaPushRequest,
+  type DeltaPullResponse,
   type DeltaPushResponse,
   type DeltaPushRequest,
   type ListTaskConflictsResponse,
   type LocalChangeDto,
   type TaskConflictDto,
+  type TaskDto,
 } from "../../../../packages/contracts/src";
 import type { LocalChange, TaskRepository } from "../data/taskRepository";
+import type { Task } from "../domain/tasks";
 
 export interface BuildDeltaPushOptions {
   repository: Pick<TaskRepository, "listPendingChanges">;
@@ -192,6 +195,45 @@ export async function applyDeltaPushResponse({
   };
 }
 
+export interface ApplyDeltaPullResponseOptions {
+  repository: Pick<
+    TaskRepository,
+    "applyRemoteTask" | "deleteRemoteTask" | "saveSyncState"
+  >;
+  response: DeltaPullResponse;
+  syncedAt: Date;
+}
+
+export interface ApplyDeltaPullResult {
+  appliedTaskCount: number;
+  deletedTaskCount: number;
+  serverCursor: string;
+}
+
+export async function applyDeltaPullResponse({
+  repository,
+  response,
+  syncedAt,
+}: ApplyDeltaPullResponseOptions): Promise<ApplyDeltaPullResult> {
+  for (const task of response.tasks) {
+    await repository.applyRemoteTask(toLocalTask(task));
+  }
+  for (const taskId of response.deletedTaskIds) {
+    await repository.deleteRemoteTask(taskId);
+  }
+  await repository.saveSyncState({
+    serverCursor: response.serverCursor,
+    lastSyncedAt: syncedAt.toISOString(),
+    lastError: null,
+  });
+
+  return {
+    appliedTaskCount: response.tasks.length,
+    deletedTaskCount: response.deletedTaskIds.length,
+    serverCursor: response.serverCursor,
+  };
+}
+
 export const SYNC_RUN_STATUSES = [
   "all-synced",
   "has-rejections",
@@ -284,6 +326,22 @@ function toLocalChangeDto(change: LocalChange): LocalChangeDto {
     action: change.action,
     payload: change.payload,
     createdAt: change.createdAt,
+  };
+}
+
+function toLocalTask(task: TaskDto): Task {
+  return {
+    id: task.id,
+    title: task.title,
+    notes: task.notes,
+    status: task.status,
+    priority: task.priority,
+    dueAt: task.dueAt,
+    estimateMin: task.estimateMin,
+    tags: task.tags,
+    createdAt: task.createdAt,
+    updatedAt: task.updatedAt,
+    completedAt: task.completedAt,
   };
 }
 

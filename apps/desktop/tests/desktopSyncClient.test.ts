@@ -6,11 +6,13 @@ import {
 import {
   SYNC_CONTRACT_VERSION,
   type DeltaPushResponse,
+  type DeltaPullResponse,
   type TaskConflictDto,
 } from "../../../packages/contracts/src";
 import type { TaskRepository } from "../src/data/taskRepository";
 import {
   SYNC_RUN_STATUSES,
+  applyDeltaPullResponse,
   applyDeltaPushResponse,
   buildDeltaPushFromPendingChanges,
   createSyncRunner,
@@ -372,6 +374,73 @@ describe("desktop sync client adapter", () => {
       lastError: "transport unavailable",
     });
     expect(transport.listConflicts).not.toHaveBeenCalled();
+  });
+
+  it("applies delta pull responses into local task storage and saves the cursor", async () => {
+    const repository = {
+      applyRemoteTask: vi.fn().mockResolvedValue(undefined),
+      deleteRemoteTask: vi.fn().mockResolvedValue(undefined),
+      saveSyncState: vi.fn().mockResolvedValue({
+        serverCursor: "cursor-12",
+        lastSyncedAt: "2026-05-16T12:05:00.000Z",
+        lastError: null,
+        updatedAt: "2026-05-16T12:05:00.000Z",
+      }),
+    } as unknown as TaskRepository;
+    const response: DeltaPullResponse = {
+      contractVersion: SYNC_CONTRACT_VERSION,
+      tasks: [
+        {
+          id: "task-remote",
+          workspaceId: "local",
+          title: "Remote task",
+          notes: null,
+          status: "active",
+          priority: 1,
+          dueAt: null,
+          estimateMin: null,
+          tags: [],
+          createdAt: "2026-05-16T10:00:00.000Z",
+          updatedAt: "2026-05-16T11:00:00.000Z",
+          completedAt: null,
+          version: 4,
+        },
+      ],
+      deletedTaskIds: ["task-deleted"],
+      serverCursor: "cursor-12",
+      serverTime: "2026-05-16T12:04:00.000Z",
+    };
+
+    await expect(
+      applyDeltaPullResponse({
+        repository,
+        response,
+        syncedAt: new Date("2026-05-16T12:05:00.000Z"),
+      }),
+    ).resolves.toEqual({
+      appliedTaskCount: 1,
+      deletedTaskCount: 1,
+      serverCursor: "cursor-12",
+    });
+    expect(repository.applyRemoteTask).toHaveBeenCalledWith({
+      id: "task-remote",
+      title: "Remote task",
+      notes: null,
+      status: "active",
+      priority: 1,
+      dueAt: null,
+      estimateMin: null,
+      tags: [],
+      createdAt: "2026-05-16T10:00:00.000Z",
+      updatedAt: "2026-05-16T11:00:00.000Z",
+      completedAt: null,
+    });
+    expect(repository.deleteRemoteTask).toHaveBeenCalledWith("task-deleted");
+    expect(repository.saveSyncState).toHaveBeenCalledWith({
+      serverCursor: "cursor-12",
+      lastSyncedAt: "2026-05-16T12:05:00.000Z",
+      lastError: null,
+    });
   });
 
   it("marks accepted changes as synced and returns unresolved sync results", async () => {
