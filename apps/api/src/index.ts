@@ -1,10 +1,12 @@
 import {
   SYNC_CONTRACT_VERSION,
+  createTaskConflict,
   type DeltaPullRequest,
   type DeltaPullResponse,
   type DeltaPushRequest,
   type DeltaPushResponse,
   type LocalChangeDto,
+  type TaskConflictDto,
   type TaskDto,
   type TaskStatusDto,
 } from "../../../packages/contracts/src";
@@ -18,9 +20,17 @@ export interface SyncApi {
 }
 
 export interface SyncStore {
-  applyChange(workspaceId: string, change: LocalChangeDto): Promise<void>;
+  applyChange(
+    workspaceId: string,
+    change: LocalChangeDto,
+    now: Date,
+  ): Promise<ApplyChangeResult>;
   listChanges(workspaceId: string, sinceCursor: string | null): Promise<SyncSnapshot>;
   currentCursor(workspaceId: string): Promise<string>;
+}
+
+export interface ApplyChangeResult {
+  conflict?: TaskConflictDto;
 }
 
 export interface SyncSnapshot {
@@ -59,6 +69,7 @@ interface TaskPayload {
 
 interface TaskUpdatePayload {
   id?: string;
+  baseVersion?: number;
   patch: Partial<Pick<
     TaskDto,
     | "title"
@@ -75,6 +86,7 @@ interface TaskUpdatePayload {
 
 interface TaskStatusPayload {
   id?: string;
+  baseVersion?: number;
   status: TaskStatusDto;
   completedAt: string | null;
   updatedAt: string;
@@ -86,11 +98,16 @@ export function createSyncApi({ store, now = () => new Date() }: SyncApiOptions)
       assertSupportedContract(request.contractVersion);
       const acceptedChangeIds: string[] = [];
       const rejectedChanges: DeltaPushResponse["rejectedChanges"] = [];
+      const conflicts: TaskConflictDto[] = [];
 
       for (const change of request.changes) {
         try {
-          await store.applyChange(request.workspaceId, change);
-          acceptedChangeIds.push(change.id);
+          const result = await store.applyChange(request.workspaceId, change, now());
+          if (result.conflict) {
+            conflicts.push(result.conflict);
+          } else {
+            acceptedChangeIds.push(change.id);
+          }
         } catch (error) {
           rejectedChanges.push({
             id: change.id,
@@ -103,7 +120,7 @@ export function createSyncApi({ store, now = () => new Date() }: SyncApiOptions)
         contractVersion: SYNC_CONTRACT_VERSION,
         acceptedChangeIds,
         rejectedChanges,
-        conflicts: [],
+        conflicts,
         serverCursor: await store.currentCursor(request.workspaceId),
         serverTime: now().toISOString(),
       };
@@ -144,14 +161,14 @@ export function createInMemorySyncStore(): SyncStore {
   }
 
   return {
-    async applyChange(workspaceId, change) {
+    async applyChange(workspaceId, change, currentTime) {
       const workspace = workspaceFor(workspaceId);
 
       if (change.entityType !== "task") {
         throw new Error("Unsupported entity type");
       }
       if (workspace.appliedChangeIds.has(change.id)) {
-        return;
+        return {};
       }
 
       if (change.action === "task.delete") {
@@ -161,10 +178,20 @@ export function createInMemorySyncStore(): SyncStore {
         workspace.deletedTaskIds.add(change.entityId);
         workspace.deleteVersions.set(change.entityId, version);
         workspace.appliedChangeIds.add(change.id);
-        return;
+        return {};
       }
 
       const existing = workspace.tasks.get(change.entityId);
+      const conflict = detectVersionConflict({
+        workspaceId,
+        change,
+        existing,
+        now: currentTime,
+      });
+      if (conflict) {
+        return { conflict };
+      }
+
       const version = workspace.version + 1;
       const task = applyTaskChange({
         action: change.action,
@@ -181,6 +208,7 @@ export function createInMemorySyncStore(): SyncStore {
       workspace.deletedTaskIds.delete(change.entityId);
       workspace.deleteVersions.delete(change.entityId);
       workspace.appliedChangeIds.add(change.id);
+      return {};
     },
 
     async listChanges(workspaceId, sinceCursor) {
@@ -310,6 +338,7 @@ function normalizeTaskUpdatePayload(
 
   return {
     id: entityId,
+    baseVersion: candidate.baseVersion,
     patch: normalizeTaskPatch(candidate.patch),
     updatedAt: candidate.updatedAt,
   };
@@ -334,10 +363,41 @@ function normalizeTaskStatusPayload(
 
   return {
     id: entityId,
+    baseVersion: candidate.baseVersion,
     status: candidate.status,
     completedAt: candidate.completedAt ?? null,
     updatedAt: candidate.updatedAt,
   };
+}
+
+function detectVersionConflict(input: {
+  workspaceId: string;
+  change: LocalChangeDto;
+  existing: TaskDto | undefined;
+  now: Date;
+}) {
+  if (!input.existing) return null;
+  const baseVersion = readBaseVersion(input.change.payload);
+  if (baseVersion == null || baseVersion === input.existing.version) {
+    return null;
+  }
+
+  return createTaskConflict({
+    id: `conflict-${input.change.id}`,
+    workspaceId: input.workspaceId,
+    taskId: input.change.entityId,
+    changeId: input.change.id,
+    reason: "Task version conflict",
+    clientPayload: input.change.payload,
+    serverTask: input.existing,
+    now: input.now,
+  });
+}
+
+function readBaseVersion(payload: unknown) {
+  if (!payload || typeof payload !== "object") return null;
+  const value = (payload as { baseVersion?: unknown }).baseVersion;
+  return typeof value === "number" ? value : null;
 }
 
 function normalizeTaskPatch(patch: TaskUpdatePayload["patch"]) {

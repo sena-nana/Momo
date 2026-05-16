@@ -292,6 +292,85 @@ describe("API sync service skeleton", () => {
       serverCursor: "cursor-0",
     });
   });
+
+  it("reports stale baseVersion updates as conflicts without advancing the cursor", async () => {
+    const api = createSyncApi({
+      store: createInMemorySyncStore(),
+      now: () => new Date("2026-05-16T12:00:00.000Z"),
+    });
+
+    await api.deltaPush(
+      push("local", [
+        taskCreateChange("change-1", {
+          id: "task-1",
+          title: "Original task",
+          updatedAt: "2026-05-16T10:00:00.000Z",
+        }),
+      ]),
+    );
+    await api.deltaPush(
+      push("local", [
+        {
+          id: "change-2",
+          entityType: "task",
+          entityId: "task-1",
+          action: "task.update",
+          payload: {
+            id: "task-1",
+            baseVersion: 1,
+            patch: { title: "Server-side edit" },
+            updatedAt: "2026-05-16T10:10:00.000Z",
+          },
+          createdAt: "2026-05-16T10:11:00.000Z",
+        },
+      ]),
+    );
+
+    await expect(
+      api.deltaPush(
+        push("local", [
+          {
+            id: "change-3",
+            entityType: "task",
+            entityId: "task-1",
+            action: "task.update",
+            payload: {
+              id: "task-1",
+              baseVersion: 1,
+              patch: { title: "Stale local edit" },
+              updatedAt: "2026-05-16T10:12:00.000Z",
+            },
+            createdAt: "2026-05-16T10:13:00.000Z",
+          },
+        ]),
+      ),
+    ).resolves.toMatchObject({
+      acceptedChangeIds: [],
+      rejectedChanges: [],
+      conflicts: [
+        {
+          id: "conflict-change-3",
+          workspaceId: "local",
+          taskId: "task-1",
+          changeId: "change-3",
+          reason: "Task version conflict",
+          clientPayload: {
+            id: "task-1",
+            baseVersion: 1,
+            patch: { title: "Stale local edit" },
+            updatedAt: "2026-05-16T10:12:00.000Z",
+          },
+          serverTask: {
+            id: "task-1",
+            title: "Server-side edit",
+            version: 2,
+          },
+          createdAt: "2026-05-16T12:00:00.000Z",
+        },
+      ],
+      serverCursor: "cursor-2",
+    });
+  });
 });
 
 function push(workspaceId: string, changes: LocalChangeDto[]) {
