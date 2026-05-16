@@ -40,6 +40,14 @@ describe("desktop README", () => {
     expect(readme).toContain("sync runner boundary");
     expect(readme).toContain("cursor state boundary");
     expect(readme).toContain("local simulation entrypoint");
+    expect(readme).toContain("Manual acceptance");
+    expect(readme).toContain("http://localhost:1420/settings");
+    expect(readme).toContain("click `Local sync simulation`");
+    expect(readme).toContain("confirm `Sync status`");
+    expect(readme).toContain("confirm `Sync state`");
+    expect(readme).toContain("Vite smoke only verifies the route, button, and error handling");
+    expect(readme).toContain("Full SQLite success flow requires `npm run tauri dev`");
+    expect(readme).toContain("no real network");
     expect(readme).toContain("npm run verify");
   });
 });

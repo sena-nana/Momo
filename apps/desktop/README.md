@@ -71,6 +71,16 @@ npm install
 
 下一轮建议做手动验收说明和开发态检查：启动 `/settings`，点击 `Local sync simulation`，确认 `sync_state` 和 `Sync status` 刷新；仍先不接真实网络层。
 
+## Manual acceptance
+
+- 运行 `npm run dev`，打开 `http://localhost:1420/settings`。
+- 在 Settings 中 click `Local sync simulation`。
+- Vite smoke only verifies the route, button, and error handling；普通浏览器没有 Tauri SQL `invoke`，因此会显示本地插件不可用错误。
+- Full SQLite success flow requires `npm run tauri dev`，在桌面壳中 click `Local sync simulation`。
+- confirm `Sync status` 显示 `Already synced` 或本地变更同步结果。
+- confirm `Sync state` 中的 cursor / last synced / last error 状态可见。
+- 该检查使用 in-memory transport，no real network、账号、后台任务或生产同步。
+
 ## 当前限制
 
 - 登录是纯前端跳转占位，OIDC / Passkeys 接入对应后端任务 **BE-01**。
