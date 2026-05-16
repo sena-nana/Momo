@@ -1,4 +1,4 @@
-interface RemoteSyncEnv {
+export interface RemoteSyncEnv {
   VITE_MOMO_SYNC_BASE_URL?: string;
   VITE_MOMO_SYNC_TOKEN?: string;
 }

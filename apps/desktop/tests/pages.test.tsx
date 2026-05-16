@@ -730,6 +730,29 @@ describe("desktop MVP pages", () => {
     ).toBeInTheDocument();
   });
 
+  it("passes remote sync env config into the default settings route", async () => {
+    vi.stubEnv("VITE_MOMO_SYNC_BASE_URL", "https://api.example.test/momo");
+    vi.stubEnv("VITE_MOMO_SYNC_TOKEN", "secret-token");
+    const repository = fakeRepository();
+
+    render(
+      <TaskRepositoryProvider repository={repository}>
+        <MemoryRouter initialEntries={["/settings"]}>
+          <App />
+        </MemoryRouter>
+      </TaskRepositoryProvider>,
+    );
+
+    expect(await screen.findByText("Remote sync config")).toBeInTheDocument();
+    expect(screen.getByText("enabled")).toBeInTheDocument();
+    expect(screen.getByText("https://api.example.test/momo")).toBeInTheDocument();
+    expect(screen.getByText("Configured")).toBeInTheDocument();
+    expect(screen.queryByText("secret-token")).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Run local sync simulation" }),
+    ).toBeInTheDocument();
+  });
+
   it("recovers settings database status errors with retry", async () => {
     const repository = fakeRepository();
     vi.mocked(repository.getStats)

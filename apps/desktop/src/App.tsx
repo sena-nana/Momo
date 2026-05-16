@@ -9,12 +9,20 @@ import Settings from "./pages/Settings";
 import Widget from "./pages/Widget";
 import { useTaskRepository } from "./data/TaskRepositoryContext";
 import { createLocalSyncRunner } from "./sync/localSyncRunner";
+import {
+  createRemoteSyncConfig,
+  type RemoteSyncEnv,
+} from "./sync/remoteSyncConfig";
 
 export default function App() {
   const repository = useTaskRepository();
   const localSyncRunner = useMemo(
     () => createLocalSyncRunner(repository),
     [repository],
+  );
+  const remoteSyncConfig = useMemo(
+    () => createRemoteSyncConfig(readRemoteSyncEnv(import.meta.env)),
+    [],
   );
 
   return (
@@ -29,6 +37,7 @@ export default function App() {
           path="/settings"
           element={
             <Settings
+              remoteSyncConfig={remoteSyncConfig}
               onRunLocalSyncSimulation={() => localSyncRunner.runOnce()}
             />
           }
@@ -37,4 +46,11 @@ export default function App() {
       <Route path="*" element={<Navigate to="/today" replace />} />
     </Routes>
   );
+}
+
+function readRemoteSyncEnv(env: ImportMetaEnv): RemoteSyncEnv {
+  return {
+    VITE_MOMO_SYNC_BASE_URL: env.VITE_MOMO_SYNC_BASE_URL,
+    VITE_MOMO_SYNC_TOKEN: env.VITE_MOMO_SYNC_TOKEN,
+  };
 }
