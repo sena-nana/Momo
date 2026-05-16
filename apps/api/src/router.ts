@@ -1,4 +1,8 @@
-import type { DeltaPullRequest, DeltaPushRequest } from "../../../packages/contracts/src";
+import type {
+  DeltaPullRequest,
+  DeltaPushRequest,
+  ResolveTaskConflictRequest,
+} from "../../../packages/contracts/src";
 import type {
   CreateTaskInput,
   TaskActor,
@@ -112,6 +116,13 @@ async function handleSyncRoute(
     return json(200, await syncApi.deltaPull(body as DeltaPullRequest));
   }
 
+  if (request.method === "POST" && segments.join("/") === "sync/conflicts/resolve") {
+    return json(
+      200,
+      await syncApi.resolveConflict(body as ResolveTaskConflictRequest),
+    );
+  }
+
   return json(404, { error: "Route not found" });
 }
 
@@ -161,7 +172,11 @@ function errorResponse(error: unknown) {
   if (message === "Actor cannot write tasks") {
     return json(403, { error: message });
   }
-  if (message === "Task not found" || message === "Route not found") {
+  if (
+    message === "Task not found" ||
+    message === "Conflict not found" ||
+    message === "Route not found"
+  ) {
     return json(404, { error: message });
   }
   return json(400, { error: message });

@@ -8,6 +8,7 @@ import {
 } from "../../../apps/api/src";
 import {
   createDeltaPushRequest,
+  createResolveTaskConflictRequest,
   type LocalChangeDto,
 } from "../../../packages/contracts/src";
 
@@ -142,6 +143,85 @@ describe("API route adapter skeleton", () => {
       body: { error: "Actor cannot write tasks" },
     });
   });
+
+  it("routes sync conflict resolution requests", async () => {
+    const router = createRouter();
+    await router.handle({
+      method: "POST",
+      path: "/sync/delta/push",
+      body: createDeltaPushRequest({
+        workspaceId: "workspace-a",
+        deviceId: "desktop-1",
+        changes: [taskCreateChange("change-1", "Original task", 0)],
+        now: new Date("2026-05-16T09:01:00.000Z"),
+      }),
+    });
+    await router.handle({
+      method: "POST",
+      path: "/sync/delta/push",
+      body: createDeltaPushRequest({
+        workspaceId: "workspace-a",
+        deviceId: "desktop-1",
+        changes: [taskUpdateChange("change-2", "Server task", 1)],
+        now: new Date("2026-05-16T09:02:00.000Z"),
+      }),
+    });
+    await router.handle({
+      method: "POST",
+      path: "/sync/delta/push",
+      body: createDeltaPushRequest({
+        workspaceId: "workspace-a",
+        deviceId: "desktop-1",
+        changes: [taskUpdateChange("change-3", "Stale task", 1)],
+        now: new Date("2026-05-16T09:03:00.000Z"),
+      }),
+    });
+
+    await expect(
+      router.handle({
+        method: "POST",
+        path: "/sync/conflicts/resolve",
+        body: createResolveTaskConflictRequest({
+          workspaceId: "workspace-a",
+          deviceId: "desktop-1",
+          conflictId: "conflict-change-3",
+          strategy: "server_wins",
+          resolvedBy: "user-1",
+        }),
+      }),
+    ).resolves.toMatchObject({
+      status: 200,
+      body: {
+        conflictId: "conflict-change-3",
+        status: "resolved",
+        resolvedTask: {
+          id: "task-1",
+          title: "Server task",
+        },
+      },
+    });
+  });
+
+  it("maps missing conflict resolution requests to a 404", async () => {
+    const router = createRouter();
+
+    await expect(
+      router.handle({
+        method: "POST",
+        path: "/sync/conflicts/resolve",
+        body: createResolveTaskConflictRequest({
+          workspaceId: "workspace-a",
+          deviceId: "desktop-1",
+          conflictId: "missing-conflict",
+          strategy: "server_wins",
+          resolvedBy: "user-1",
+        }),
+      }),
+    ).resolves.toEqual({
+      status: 404,
+      body: { error: "Conflict not found" },
+    });
+  });
 });
 
 function createRouter() {
@@ -163,5 +243,53 @@ function actorHeaders(workspaceId: string, role: string) {
     "x-workspace-id": workspaceId,
     "x-user-id": "user-1",
     "x-role": role,
+  };
+}
+
+function taskCreateChange(
+  id: string,
+  title: string,
+  baseVersion: number,
+): LocalChangeDto {
+  return {
+    id,
+    entityType: "task",
+    entityId: "task-1",
+    action: "task.create",
+    payload: {
+      id: "task-1",
+      title,
+      notes: null,
+      status: "active",
+      priority: 0,
+      dueAt: null,
+      estimateMin: null,
+      tags: [],
+      createdAt: "2026-05-16T09:00:00.000Z",
+      updatedAt: "2026-05-16T09:00:00.000Z",
+      completedAt: null,
+      baseVersion,
+    },
+    createdAt: "2026-05-16T09:00:00.000Z",
+  };
+}
+
+function taskUpdateChange(
+  id: string,
+  title: string,
+  baseVersion: number,
+): LocalChangeDto {
+  return {
+    id,
+    entityType: "task",
+    entityId: "task-1",
+    action: "task.update",
+    payload: {
+      id: "task-1",
+      baseVersion,
+      patch: { title },
+      updatedAt: "2026-05-16T09:10:00.000Z",
+    },
+    createdAt: "2026-05-16T09:10:00.000Z",
   };
 }
