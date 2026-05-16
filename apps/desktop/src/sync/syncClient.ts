@@ -49,6 +49,57 @@ export async function applyDeltaPushResponse({
     rejectedChanges: response.rejectedChanges,
     conflicts: response.conflicts,
     serverCursor: response.serverCursor,
+    summary: summarizeDeltaPushResponse(response),
+  };
+}
+
+export type SyncRunStatus = "all-synced" | "has-rejections" | "has-conflicts";
+
+export interface SyncRunSummary {
+  status: SyncRunStatus;
+  message: string;
+  acceptedCount: number;
+  rejectedCount: number;
+  conflictCount: number;
+  serverCursor: string;
+}
+
+export function summarizeDeltaPushResponse(
+  response: DeltaPushResponse,
+): SyncRunSummary {
+  const acceptedCount = response.acceptedChangeIds.length;
+  const rejectedCount = response.rejectedChanges.length;
+  const conflictCount = response.conflicts.length;
+
+  if (conflictCount > 0) {
+    return {
+      status: "has-conflicts",
+      message: `${conflictCount} sync conflict${conflictCount === 1 ? "" : "s"} needs review`,
+      acceptedCount,
+      rejectedCount,
+      conflictCount,
+      serverCursor: response.serverCursor,
+    };
+  }
+
+  if (rejectedCount > 0) {
+    return {
+      status: "has-rejections",
+      message: `${rejectedCount} local change${rejectedCount === 1 ? "" : "s"} needs retry or repair`,
+      acceptedCount,
+      rejectedCount,
+      conflictCount,
+      serverCursor: response.serverCursor,
+    };
+  }
+
+  return {
+    status: "all-synced",
+    message: `${acceptedCount} local change${acceptedCount === 1 ? "" : "s"} synced`,
+    acceptedCount,
+    rejectedCount,
+    conflictCount,
+    serverCursor: response.serverCursor,
   };
 }
 

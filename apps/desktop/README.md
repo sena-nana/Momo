@@ -55,6 +55,7 @@ npm install
 - `buildDeltaPushFromPendingChanges()` 从 `TaskRepository.listPendingChanges()` 构造 `DeltaPushRequest`。
 - `applyDeltaPushResponse()` 会把服务端 accepted change ids 通过 `TaskRepository.markChangeSynced()` 标记为已同步。
 - rejected changes 与 conflicts 目前只作为摘要返回给调用方，不会自动重试、覆盖或解决冲突。
+- `summarizeDeltaPushResponse()` 会把一次 delta push 响应归纳成 `all-synced`、`has-rejections` 或 `has-conflicts` 状态文案。
 - `summarizePendingConflicts()` 可把待处理冲突映射成只读展示摘要，保留 conflict/task/change id、原因、server task 标题/版本与 client payload 摘要。
 - Settings 目前会在有冲突摘要时展示只读 `Sync conflicts` 列表占位，不提供解决按钮。
 - 当前没有真实网络请求、账号、后台任务或定时同步；这些仍属于后续 BE-01 / BE-03 范围。

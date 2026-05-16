@@ -8,6 +8,7 @@ import type { TaskRepository } from "../src/data/taskRepository";
 import {
   applyDeltaPushResponse,
   buildDeltaPushFromPendingChanges,
+  summarizeDeltaPushResponse,
   summarizePendingConflicts,
 } from "../src/sync/syncClient";
 
@@ -103,6 +104,14 @@ describe("desktop sync client adapter", () => {
       rejectedChanges: response.rejectedChanges,
       conflicts: response.conflicts,
       serverCursor: "cursor-2",
+      summary: {
+        status: "has-conflicts",
+        message: "1 sync conflict needs review",
+        acceptedCount: 2,
+        rejectedCount: 1,
+        conflictCount: 1,
+        serverCursor: "cursor-2",
+      },
     });
 
     expect(repository.markChangeSynced).toHaveBeenNthCalledWith(
@@ -115,6 +124,77 @@ describe("desktop sync client adapter", () => {
       "change-2",
       new Date("2026-05-16T12:01:00.000Z"),
     );
+  });
+
+  it("summarizes a fully accepted sync run", () => {
+    expect(
+      summarizeDeltaPushResponse({
+        contractVersion: SYNC_CONTRACT_VERSION,
+        acceptedChangeIds: ["change-1"],
+        rejectedChanges: [],
+        conflicts: [],
+        serverCursor: "cursor-1",
+        serverTime: "2026-05-16T12:00:00.000Z",
+      }),
+    ).toEqual({
+      status: "all-synced",
+      message: "1 local change synced",
+      acceptedCount: 1,
+      rejectedCount: 0,
+      conflictCount: 0,
+      serverCursor: "cursor-1",
+    });
+  });
+
+  it("summarizes rejected sync changes", () => {
+    expect(
+      summarizeDeltaPushResponse({
+        contractVersion: SYNC_CONTRACT_VERSION,
+        acceptedChangeIds: [],
+        rejectedChanges: [{ id: "change-2", reason: "Invalid payload" }],
+        conflicts: [],
+        serverCursor: "cursor-0",
+        serverTime: "2026-05-16T12:00:00.000Z",
+      }),
+    ).toMatchObject({
+      status: "has-rejections",
+      message: "1 local change needs retry or repair",
+      acceptedCount: 0,
+      rejectedCount: 1,
+      conflictCount: 0,
+      serverCursor: "cursor-0",
+    });
+  });
+
+  it("summarizes sync conflicts before rejected changes", () => {
+    expect(
+      summarizeDeltaPushResponse({
+        contractVersion: SYNC_CONTRACT_VERSION,
+        acceptedChangeIds: ["change-1"],
+        rejectedChanges: [{ id: "change-2", reason: "Invalid payload" }],
+        conflicts: [
+          {
+            id: "conflict-1",
+            workspaceId: "local",
+            taskId: "task-1",
+            changeId: "change-3",
+            reason: "Task version conflict",
+            clientPayload: { patch: { title: "Local" } },
+            serverTask: null,
+            createdAt: "2026-05-16T12:00:00.000Z",
+          },
+        ],
+        serverCursor: "cursor-1",
+        serverTime: "2026-05-16T12:00:00.000Z",
+      }),
+    ).toMatchObject({
+      status: "has-conflicts",
+      message: "1 sync conflict needs review",
+      acceptedCount: 1,
+      rejectedCount: 1,
+      conflictCount: 1,
+      serverCursor: "cursor-1",
+    });
   });
 
   it("summarizes pending conflicts without applying a resolution", () => {
