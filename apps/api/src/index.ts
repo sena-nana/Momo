@@ -6,6 +6,8 @@ import {
   type DeltaPushRequest,
   type DeltaPushResponse,
   type LocalChangeDto,
+  type ResolveTaskConflictRequest,
+  type ResolveTaskConflictResponse,
   type TaskConflictDto,
   type TaskDto,
   type TaskStatusDto,
@@ -17,6 +19,9 @@ export * from "./router";
 export interface SyncApi {
   deltaPush(request: DeltaPushRequest): Promise<DeltaPushResponse>;
   deltaPull(request: DeltaPullRequest): Promise<DeltaPullResponse>;
+  resolveConflict(
+    request: ResolveTaskConflictRequest,
+  ): Promise<ResolveTaskConflictResponse>;
 }
 
 export interface SyncStore {
@@ -27,10 +32,20 @@ export interface SyncStore {
   ): Promise<ApplyChangeResult>;
   listChanges(workspaceId: string, sinceCursor: string | null): Promise<SyncSnapshot>;
   currentCursor(workspaceId: string): Promise<string>;
+  resolveConflict(
+    workspaceId: string,
+    request: ResolveTaskConflictRequest,
+  ): Promise<ConflictResolutionResult>;
 }
 
 export interface ApplyChangeResult {
   conflict?: TaskConflictDto;
+}
+
+export interface ConflictResolutionResult {
+  status: ResolveTaskConflictResponse["status"];
+  strategy: ResolveTaskConflictRequest["strategy"];
+  resolvedTask: TaskDto | null;
 }
 
 export interface SyncSnapshot {
@@ -51,6 +66,7 @@ interface StoredWorkspace {
   taskVersions: Map<string, number>;
   deleteVersions: Map<string, number>;
   appliedChangeIds: Set<string>;
+  conflicts: Map<string, TaskConflictDto>;
 }
 
 interface TaskPayload {
@@ -138,6 +154,21 @@ export function createSyncApi({ store, now = () => new Date() }: SyncApiOptions)
         serverTime: now().toISOString(),
       };
     },
+
+    async resolveConflict(request) {
+      assertSupportedContract(request.contractVersion);
+      const result = await store.resolveConflict(request.workspaceId, request);
+
+      return {
+        contractVersion: SYNC_CONTRACT_VERSION,
+        conflictId: request.conflictId,
+        strategy: result.strategy,
+        status: result.status,
+        resolvedTask: result.resolvedTask,
+        serverCursor: await store.currentCursor(request.workspaceId),
+        serverTime: now().toISOString(),
+      };
+    },
   };
 }
 
@@ -154,6 +185,7 @@ export function createInMemorySyncStore(): SyncStore {
         taskVersions: new Map(),
         deleteVersions: new Map(),
         appliedChangeIds: new Set(),
+        conflicts: new Map(),
       };
       workspaces.set(workspaceId, workspace);
     }
@@ -189,6 +221,7 @@ export function createInMemorySyncStore(): SyncStore {
         now: currentTime,
       });
       if (conflict) {
+        workspace.conflicts.set(conflict.id, conflict);
         return { conflict };
       }
 
@@ -228,6 +261,29 @@ export function createInMemorySyncStore(): SyncStore {
 
     async currentCursor(workspaceId) {
       return formatCursor(workspaceFor(workspaceId).version);
+    },
+
+    async resolveConflict(workspaceId, request) {
+      const workspace = workspaceFor(workspaceId);
+      const conflict = workspace.conflicts.get(request.conflictId);
+      if (!conflict) {
+        throw new Error("Conflict not found");
+      }
+
+      if (request.strategy === "server_wins") {
+        workspace.conflicts.delete(request.conflictId);
+        return {
+          status: "resolved",
+          strategy: request.strategy,
+          resolvedTask: conflict.serverTask,
+        };
+      }
+
+      return {
+        status: "pending_manual",
+        strategy: request.strategy,
+        resolvedTask: null,
+      };
     },
   };
 }

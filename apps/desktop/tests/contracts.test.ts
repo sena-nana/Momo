@@ -3,6 +3,7 @@ import {
   SYNC_CONTRACT_VERSION,
   createDeltaPullRequest,
   createDeltaPushRequest,
+  createResolveTaskConflictRequest,
   createTaskConflict,
   type LocalChangeDto,
 } from "../../../packages/contracts/src";
@@ -72,6 +73,27 @@ describe("sync contracts", () => {
       clientPayload: { title: "Client title" },
       serverTask: null,
       createdAt: "2026-05-16T06:00:00.000Z",
+    });
+  });
+
+  it("builds a versioned conflict resolution request", () => {
+    expect(
+      createResolveTaskConflictRequest({
+        workspaceId: "local",
+        deviceId: "desktop-1",
+        conflictId: "conflict-1",
+        strategy: "server_wins",
+        resolvedBy: "user-1",
+        note: "Keep server copy",
+      }),
+    ).toEqual({
+      contractVersion: SYNC_CONTRACT_VERSION,
+      workspaceId: "local",
+      deviceId: "desktop-1",
+      conflictId: "conflict-1",
+      strategy: "server_wins",
+      resolvedBy: "user-1",
+      note: "Keep server copy",
     });
   });
 });

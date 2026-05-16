@@ -43,6 +43,31 @@ export interface TaskConflictDto {
   createdAt: string;
 }
 
+export type ConflictResolutionStrategyDto =
+  | "client_wins"
+  | "server_wins"
+  | "manual";
+
+export interface ResolveTaskConflictRequest {
+  contractVersion: typeof SYNC_CONTRACT_VERSION;
+  workspaceId: string;
+  deviceId: string;
+  conflictId: string;
+  strategy: ConflictResolutionStrategyDto;
+  resolvedBy: string;
+  note: string | null;
+}
+
+export interface ResolveTaskConflictResponse {
+  contractVersion: typeof SYNC_CONTRACT_VERSION;
+  conflictId: string;
+  strategy: ConflictResolutionStrategyDto;
+  status: "resolved" | "pending_manual";
+  resolvedTask: TaskDto | null;
+  serverCursor: string;
+  serverTime: string;
+}
+
 export interface DeltaPushRequest {
   contractVersion: typeof SYNC_CONTRACT_VERSION;
   workspaceId: string;
@@ -118,5 +143,24 @@ export function createTaskConflict(input: Omit<TaskConflictDto, "createdAt"> & {
     clientPayload: input.clientPayload,
     serverTask: input.serverTask,
     createdAt: input.now.toISOString(),
+  };
+}
+
+export function createResolveTaskConflictRequest(input: {
+  workspaceId: string;
+  deviceId: string;
+  conflictId: string;
+  strategy: ConflictResolutionStrategyDto;
+  resolvedBy: string;
+  note?: string | null;
+}): ResolveTaskConflictRequest {
+  return {
+    contractVersion: SYNC_CONTRACT_VERSION,
+    workspaceId: input.workspaceId,
+    deviceId: input.deviceId,
+    conflictId: input.conflictId,
+    strategy: input.strategy,
+    resolvedBy: input.resolvedBy,
+    note: input.note ?? null,
   };
 }
