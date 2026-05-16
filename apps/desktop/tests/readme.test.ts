@@ -14,6 +14,7 @@ describe("desktop README", () => {
     expect(readme).toContain("Pending sync");
     expect(readme).toContain("buildDeltaPushFromPendingChanges");
     expect(readme).toContain("applyDeltaPushResponse");
+    expect(readme).toContain("summarizePendingConflicts");
     expect(readme).toContain("npm run verify");
   });
 });

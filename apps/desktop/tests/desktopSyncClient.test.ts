@@ -1,9 +1,14 @@
 import { describe, expect, it, vi } from "vitest";
-import { SYNC_CONTRACT_VERSION, type DeltaPushResponse } from "../../../packages/contracts/src";
+import {
+  SYNC_CONTRACT_VERSION,
+  type DeltaPushResponse,
+  type TaskConflictDto,
+} from "../../../packages/contracts/src";
 import type { TaskRepository } from "../src/data/taskRepository";
 import {
   applyDeltaPushResponse,
   buildDeltaPushFromPendingChanges,
+  summarizePendingConflicts,
 } from "../src/sync/syncClient";
 
 describe("desktop sync client adapter", () => {
@@ -110,5 +115,71 @@ describe("desktop sync client adapter", () => {
       "change-2",
       new Date("2026-05-16T12:01:00.000Z"),
     );
+  });
+
+  it("summarizes pending conflicts without applying a resolution", () => {
+    const conflicts: TaskConflictDto[] = [
+      {
+        id: "conflict-1",
+        workspaceId: "local",
+        taskId: "task-1",
+        changeId: "change-4",
+        reason: "Task version conflict",
+        clientPayload: {
+          id: "task-1",
+          patch: { title: "Local title", priority: 3 },
+          updatedAt: "2026-05-16T12:00:00.000Z",
+        },
+        serverTask: {
+          id: "task-1",
+          workspaceId: "local",
+          title: "Server title",
+          notes: null,
+          status: "active",
+          priority: 1,
+          dueAt: null,
+          estimateMin: null,
+          tags: [],
+          createdAt: "2026-05-16T10:00:00.000Z",
+          updatedAt: "2026-05-16T11:00:00.000Z",
+          completedAt: null,
+          version: 5,
+        },
+        createdAt: "2026-05-16T12:01:00.000Z",
+      },
+      {
+        id: "conflict-2",
+        workspaceId: "local",
+        taskId: "task-2",
+        changeId: "change-5",
+        reason: "Task version conflict",
+        clientPayload: { status: "completed" },
+        serverTask: null,
+        createdAt: "2026-05-16T12:02:00.000Z",
+      },
+    ];
+
+    expect(summarizePendingConflicts(conflicts)).toEqual([
+      {
+        id: "conflict-1",
+        taskId: "task-1",
+        changeId: "change-4",
+        reason: "Task version conflict",
+        createdAt: "2026-05-16T12:01:00.000Z",
+        serverTaskTitle: "Server title",
+        serverTaskVersion: 5,
+        clientPayloadSummary: 'patch: {"title":"Local title","priority":3}',
+      },
+      {
+        id: "conflict-2",
+        taskId: "task-2",
+        changeId: "change-5",
+        reason: "Task version conflict",
+        createdAt: "2026-05-16T12:02:00.000Z",
+        serverTaskTitle: null,
+        serverTaskVersion: null,
+        clientPayloadSummary: 'status: "completed"',
+      },
+    ]);
   });
 });

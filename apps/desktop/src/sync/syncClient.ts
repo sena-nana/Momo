@@ -2,6 +2,7 @@ import {
   createDeltaPushRequest,
   type DeltaPushResponse,
   type LocalChangeDto,
+  type TaskConflictDto,
 } from "../../../../packages/contracts/src";
 import type { LocalChange, TaskRepository } from "../data/taskRepository";
 
@@ -51,6 +52,32 @@ export async function applyDeltaPushResponse({
   };
 }
 
+export interface PendingConflictSummary {
+  id: string;
+  taskId: string;
+  changeId: string;
+  reason: string;
+  createdAt: string;
+  serverTaskTitle: string | null;
+  serverTaskVersion: number | null;
+  clientPayloadSummary: string;
+}
+
+export function summarizePendingConflicts(
+  conflicts: TaskConflictDto[],
+): PendingConflictSummary[] {
+  return conflicts.map((conflict) => ({
+    id: conflict.id,
+    taskId: conflict.taskId,
+    changeId: conflict.changeId,
+    reason: conflict.reason,
+    createdAt: conflict.createdAt,
+    serverTaskTitle: conflict.serverTask?.title ?? null,
+    serverTaskVersion: conflict.serverTask?.version ?? null,
+    clientPayloadSummary: summarizeClientPayload(conflict.clientPayload),
+  }));
+}
+
 function toLocalChangeDto(change: LocalChange): LocalChangeDto {
   return {
     id: change.id,
@@ -60,4 +87,21 @@ function toLocalChangeDto(change: LocalChange): LocalChangeDto {
     payload: change.payload,
     createdAt: change.createdAt,
   };
+}
+
+function summarizeClientPayload(payload: unknown) {
+  if (!payload || typeof payload !== "object") {
+    return String(payload);
+  }
+
+  const entries = Object.entries(payload as Record<string, unknown>).filter(
+    ([key]) => key !== "id" && key !== "baseVersion" && key !== "updatedAt",
+  );
+  if (entries.length === 0) {
+    return "empty payload";
+  }
+
+  return entries
+    .map(([key, value]) => `${key}: ${JSON.stringify(value)}`)
+    .join(", ");
 }
