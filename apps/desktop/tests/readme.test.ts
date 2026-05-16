@@ -22,6 +22,9 @@ describe("desktop README", () => {
     expect(readme).toContain("summarizePendingConflicts");
     expect(readme).toContain("Sync conflicts");
     expect(readme).toContain("Sync status");
+    expect(readme).toContain("onRunLocalSyncSimulation");
+    expect(readme).toContain("Local sync simulation");
+    expect(readme).toContain("keyboard-accessible");
     expect(readme).toContain("sync runner boundary");
     expect(readme).toContain("local simulation entrypoint");
     expect(readme).toContain("npm run verify");

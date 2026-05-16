@@ -60,6 +60,7 @@ npm install
 - `summarizePendingConflicts()` 可把待处理冲突映射成只读展示摘要，保留 conflict/task/change id、原因、server task 标题/版本与 client payload 摘要。
 - Settings 目前会在有冲突摘要时展示只读 `Sync conflicts` 列表占位，不提供解决按钮。
 - Settings 也支持注入只读 `Sync status` 摘要，用于展示最近一次同步运行结果、计数和 cursor。
+- Settings 可注入 `onRunLocalSyncSimulation` 显示 `Local sync simulation` 演示按钮；该按钮是 keyboard-accessible 的普通 button，只调用注入回调，不会自动连接真实网络。
 - 当前没有真实网络请求、账号、后台任务或定时同步；这些仍属于后续 BE-01 / BE-03 范围。
 
 下一轮建议先定义 `sync runner boundary`：由谁触发同步、如何注入 workspace/device、怎样持久化 cursor、失败如何回传到 Settings。若继续保持无后端开发节奏，可以先做 `local simulation entrypoint`，用内存 `createSyncApi()` 驱动一次端到端同步演练，再替换成真实网络层。

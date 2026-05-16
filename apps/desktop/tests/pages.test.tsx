@@ -7,7 +7,11 @@ import type {
   TaskRepository,
 } from "../src/data/taskRepository";
 import type { CreateTaskInput, Task, TodayTaskGroups } from "../src/domain/tasks";
-import type { PendingConflictSummary, SyncRunSummary } from "../src/sync/syncClient";
+import type {
+  LocalSyncSimulationResult,
+  PendingConflictSummary,
+  SyncRunSummary,
+} from "../src/sync/syncClient";
 import Today from "../src/pages/Today";
 import Inbox from "../src/pages/Inbox";
 import Calendar from "../src/pages/Calendar";
@@ -337,6 +341,67 @@ describe("desktop MVP pages", () => {
     expect(within(conflictRow as HTMLElement).getByText("0")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /retry/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /resolve/i })).not.toBeInTheDocument();
+  });
+
+  it("runs an injected local sync simulation from settings", async () => {
+    const repository = fakeRepository();
+    const onRunLocalSyncSimulation = vi.fn().mockResolvedValue({
+      request: {
+        contractVersion: 1,
+        workspaceId: "local",
+        deviceId: "desktop-1",
+        changes: [],
+        clientSentAt: "2026-05-16T12:00:00.000Z",
+      },
+      push: {
+        acceptedChangeIds: [],
+        rejectedChanges: [],
+        conflicts: [],
+        serverCursor: "cursor-3",
+        summary: {
+          status: "all-synced",
+          message: "Already synced",
+          acceptedCount: 0,
+          rejectedCount: 0,
+          conflictCount: 0,
+          serverCursor: "cursor-3",
+        },
+      },
+      pendingConflictCount: 0,
+      pendingConflicts: [],
+    } satisfies LocalSyncSimulationResult);
+
+    renderWithRepository(
+      <Settings onRunLocalSyncSimulation={onRunLocalSyncSimulation} />,
+      repository,
+    );
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Run local sync simulation" }),
+    );
+
+    expect(onRunLocalSyncSimulation).toHaveBeenCalledTimes(1);
+    expect(await screen.findByText("Sync status")).toBeInTheDocument();
+    expect(screen.getByText("Already synced")).toBeInTheDocument();
+    expect(screen.getByText("cursor-3")).toBeInTheDocument();
+  });
+
+  it("shows local sync simulation errors in settings", async () => {
+    const repository = fakeRepository();
+    const onRunLocalSyncSimulation = vi
+      .fn()
+      .mockRejectedValue(new Error("simulation unavailable"));
+
+    renderWithRepository(
+      <Settings onRunLocalSyncSimulation={onRunLocalSyncSimulation} />,
+      repository,
+    );
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Run local sync simulation" }),
+    );
+
+    expect(await screen.findByText("Error: simulation unavailable")).toBeInTheDocument();
   });
 
   it("recovers settings database status errors with retry", async () => {

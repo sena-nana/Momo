@@ -2,21 +2,34 @@ import { useEffect, useState } from "react";
 import { Database, Loader2, RefreshCw } from "lucide-react";
 import { useTaskRepository } from "../data/TaskRepositoryContext";
 import type { DatabaseStats } from "../data/taskRepository";
-import type { PendingConflictSummary, SyncRunSummary } from "../sync/syncClient";
+import type {
+  LocalSyncSimulationResult,
+  PendingConflictSummary,
+  SyncRunSummary,
+} from "../sync/syncClient";
 
 interface SettingsProps {
   pendingConflicts?: PendingConflictSummary[];
   syncSummary?: SyncRunSummary | null;
+  onRunLocalSyncSimulation?: () => Promise<LocalSyncSimulationResult>;
 }
 
 export default function Settings({
   pendingConflicts = [],
   syncSummary = null,
+  onRunLocalSyncSimulation,
 }: SettingsProps) {
   const repository = useTaskRepository();
   const [stats, setStats] = useState<DatabaseStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [simulationResult, setSimulationResult] =
+    useState<LocalSyncSimulationResult | null>(null);
+  const [simulationLoading, setSimulationLoading] = useState(false);
+  const [simulationError, setSimulationError] = useState<string | null>(null);
+
+  const visibleSyncSummary = simulationResult?.push.summary ?? syncSummary;
+  const visibleConflicts = simulationResult?.pendingConflicts ?? pendingConflicts;
 
   async function load() {
     setLoading(true);
@@ -34,6 +47,19 @@ export default function Settings({
   useEffect(() => {
     void load();
   }, []);
+
+  async function runSimulation() {
+    if (!onRunLocalSyncSimulation) return;
+    setSimulationLoading(true);
+    setSimulationError(null);
+    try {
+      setSimulationResult(await onRunLocalSyncSimulation());
+    } catch (e) {
+      setSimulationError(String(e));
+    } finally {
+      setSimulationLoading(false);
+    }
+  }
 
   return (
     <section className="page">
@@ -81,14 +107,29 @@ export default function Settings({
         )}
       </div>
 
-      {pendingConflicts.length > 0 && (
+      {onRunLocalSyncSimulation && (
+        <div className="card">
+          <div className="section-title">
+            <h2>Local sync simulation</h2>
+          </div>
+          <button type="button" onClick={runSimulation} disabled={simulationLoading}>
+            {simulationLoading && <Loader2 className="spin" size={16} aria-hidden="true" />}
+            Run local sync simulation
+          </button>
+          {simulationError && (
+            <p className="err">Error: {simulationError.replace(/^Error:\s*/, "")}</p>
+          )}
+        </div>
+      )}
+
+      {visibleConflicts.length > 0 && (
         <div className="card">
           <div className="section-title">
             <h2>Sync conflicts</h2>
-            <span className="pill">{pendingConflicts.length}</span>
+            <span className="pill">{visibleConflicts.length}</span>
           </div>
           <ul className="conflict-list">
-            {pendingConflicts.map((conflict) => (
+            {visibleConflicts.map((conflict) => (
               <li key={conflict.id}>
                 <div>
                   <strong>{conflict.serverTaskTitle ?? conflict.taskId}</strong>
@@ -103,18 +144,18 @@ export default function Settings({
         </div>
       )}
 
-      {syncSummary && (
+      {visibleSyncSummary && (
         <div className="card">
           <div className="section-title">
             <h2>Sync status</h2>
-            <span className="pill">{syncSummary.status}</span>
+            <span className="pill">{visibleSyncSummary.status}</span>
           </div>
-          <p className="empty-text">{syncSummary.message}</p>
+          <p className="empty-text">{visibleSyncSummary.message}</p>
           <ul className="kv">
-            <li><span>Accepted</span><b>{syncSummary.acceptedCount}</b></li>
-            <li><span>Rejected</span><b>{syncSummary.rejectedCount}</b></li>
-            <li><span>Conflicts</span><b>{syncSummary.conflictCount}</b></li>
-            <li><span>Cursor</span><b>{syncSummary.serverCursor}</b></li>
+            <li><span>Accepted</span><b>{visibleSyncSummary.acceptedCount}</b></li>
+            <li><span>Rejected</span><b>{visibleSyncSummary.rejectedCount}</b></li>
+            <li><span>Conflicts</span><b>{visibleSyncSummary.conflictCount}</b></li>
+            <li><span>Cursor</span><b>{visibleSyncSummary.serverCursor}</b></li>
           </ul>
         </div>
       )}
