@@ -28,6 +28,21 @@ export interface ApiRouter {
   handle(request: ApiRequest): Promise<ApiResponse>;
 }
 
+export const API_ROUTES = [
+  { method: "GET", path: "/tasks", name: "tasks.list" },
+  { method: "POST", path: "/tasks", name: "tasks.create" },
+  { method: "PATCH", path: "/tasks/:id", name: "tasks.update" },
+  { method: "POST", path: "/tasks/:id/status", name: "tasks.setStatus" },
+  { method: "DELETE", path: "/tasks/:id", name: "tasks.delete" },
+  { method: "POST", path: "/sync/delta/push", name: "sync.deltaPush" },
+  { method: "POST", path: "/sync/delta/pull", name: "sync.deltaPull" },
+  {
+    method: "POST",
+    path: "/sync/conflicts/resolve",
+    name: "sync.resolveConflict",
+  },
+] as const;
+
 interface ApiRouterOptions {
   taskService: TaskService;
   syncApi: SyncApi;

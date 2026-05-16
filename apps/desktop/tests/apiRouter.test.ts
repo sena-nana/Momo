@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  API_ROUTES,
   createApiRouter,
   createInMemorySyncStore,
   createInMemoryTaskRepository,
@@ -13,6 +14,19 @@ import {
 } from "../../../packages/contracts/src";
 
 describe("API route adapter skeleton", () => {
+  it("exports a route manifest for every supported HTTP-like endpoint", () => {
+    expect(API_ROUTES.map((route) => `${route.method} ${route.path}`)).toEqual([
+      "GET /tasks",
+      "POST /tasks",
+      "PATCH /tasks/:id",
+      "POST /tasks/:id/status",
+      "DELETE /tasks/:id",
+      "POST /sync/delta/push",
+      "POST /sync/delta/pull",
+      "POST /sync/conflicts/resolve",
+    ]);
+  });
+
   it("routes task create and list requests with actor headers", async () => {
     const router = createRouter();
 
