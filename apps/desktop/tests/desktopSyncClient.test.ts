@@ -10,6 +10,7 @@ import * as apiModule from "../../../apps/api/src";
 import {
   createDeltaPushRequest,
   SYNC_CONTRACT_VERSION,
+  type DeltaPushRequest,
   type DeltaPushResponse,
   type DeltaPullResponse,
   type TaskConflictDto,
@@ -26,6 +27,7 @@ import {
   summarizePendingConflicts,
   type ApplyDeltaPushResult,
 } from "../src/sync/syncClient";
+import { createHttpSyncTransport } from "../src/sync/httpSyncTransport";
 import { createHttpLikeSyncTransport } from "../src/sync/httpLikeSyncTransport";
 import { createLocalSyncRunner } from "../src/sync/localSyncRunner";
 
@@ -222,6 +224,69 @@ describe("desktop sync client adapter", () => {
       conflicts: [],
       serverCursor: "cursor-1",
     });
+  });
+
+  it("adapts sync runner transport calls to injected HTTP fetch requests", async () => {
+    const fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: vi.fn().mockResolvedValue({
+        contractVersion: SYNC_CONTRACT_VERSION,
+        acceptedChangeIds: ["change-1"],
+        rejectedChanges: [],
+        conflicts: [],
+        serverCursor: "cursor-1",
+        serverTime: "2026-05-16T12:00:00.000Z",
+      } satisfies DeltaPushResponse),
+    });
+    const transport = createHttpSyncTransport({
+      baseUrl: "https://api.example.test/momo/",
+      fetch,
+    });
+    const request: DeltaPushRequest = createDeltaPushRequest({
+      workspaceId: "local",
+      deviceId: "desktop-1",
+      changes: [],
+      now: new Date("2026-05-16T12:00:00.000Z"),
+    });
+
+    await expect(transport.deltaPush(request)).resolves.toMatchObject({
+      acceptedChangeIds: ["change-1"],
+      serverCursor: "cursor-1",
+    });
+    expect(fetch).toHaveBeenCalledWith(
+      "https://api.example.test/momo/sync/delta/push",
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+        },
+        body: JSON.stringify(request),
+      },
+    );
+  });
+
+  it("surfaces injected HTTP fetch transport errors with method path and status", async () => {
+    const fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 503,
+      json: vi.fn().mockResolvedValue({ error: "sync service unavailable" }),
+    });
+    const transport = createHttpSyncTransport({
+      baseUrl: "https://api.example.test",
+      fetch,
+    });
+
+    await expect(
+      transport.deltaPull({
+        contractVersion: SYNC_CONTRACT_VERSION,
+        workspaceId: "local",
+        deviceId: "desktop-1",
+        sinceCursor: null,
+      }),
+    ).rejects.toThrow(
+      "POST /sync/delta/pull failed with 503: sync service unavailable",
+    );
   });
 
   it("surfaces HTTP-like sync transport route errors as thrown errors", async () => {
