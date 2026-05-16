@@ -61,6 +61,7 @@ npm install
 - `createHttpLikeSyncTransport()` 是当前 HTTP-like sync transport boundary：把 `deltaPush()` / `deltaPull()` / `listConflicts()` 映射到 API router 的 `/sync/delta/push`、`/sync/delta/pull` 与 `/sync/conflicts`。
 - HTTP-like transport 非 2xx 错误会保留 route/status 与 body error，便于 Settings 与 `sync_state.lastError` 排查失败来源。
 - `createHttpSyncTransport()` 定义真实 HTTP transport contract：通过 injected `fetch` 与 base URL 发送 JSON 请求，但当前不接默认 Settings 路径或生产 URL。
+- HTTP transport 支持可选 headers provider 注入 auth/client headers；缺少 base URL 时会抛出 `HTTP sync baseUrl is not configured`，且不会调用 fetch。
 - `createLocalSyncRunner()` 使用 in-memory API router + HTTP-like sync transport 包装本地 `createSyncApi()`，并已接到 default Settings route，作为当前 local simulation entrypoint 让 `/settings` 中的演示按钮在实际桌面壳里可见。
 - `createSyncRunner()` 是桌面端 sync runner boundary；`runOnce()` 接收注入的 `transport`、workspace/device 与 clock，负责编排一次同步并把 transport 错误归一成可展示结果。
 - 当 transport 提供 `deltaPull()` 时，`runOnce()` runs delta pull after delta push：读取 `sync_state.serverCursor` 作为 `sinceCursor`，拉取并应用远端变化。

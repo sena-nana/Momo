@@ -24,17 +24,20 @@ type FetchLike = (
 interface HttpSyncTransportOptions {
   baseUrl: string;
   fetch: FetchLike;
+  headers?: () => Promise<Record<string, string>> | Record<string, string>;
 }
 
 export function createHttpSyncTransport({
   baseUrl,
   fetch,
+  headers,
 }: HttpSyncTransportOptions): SyncRunnerTransport {
   return {
     deltaPush(request) {
       return postSyncRoute<DeltaPushResponse>(
         fetch,
         baseUrl,
+        headers,
         "/sync/delta/push",
         request,
       );
@@ -43,6 +46,7 @@ export function createHttpSyncTransport({
       return postSyncRoute<DeltaPullResponse>(
         fetch,
         baseUrl,
+        headers,
         "/sync/delta/pull",
         request,
       );
@@ -51,6 +55,7 @@ export function createHttpSyncTransport({
       return postSyncRoute<ListTaskConflictsResponse>(
         fetch,
         baseUrl,
+        headers,
         "/sync/conflicts",
         request,
       );
@@ -61,13 +66,19 @@ export function createHttpSyncTransport({
 async function postSyncRoute<TResponse>(
   fetch: FetchLike,
   baseUrl: string,
+  headers: HttpSyncTransportOptions["headers"],
   path: string,
   body: DeltaPushRequest | DeltaPullRequest | ListTaskConflictsRequest,
 ): Promise<TResponse> {
+  if (!baseUrl.trim()) {
+    throw new Error("HTTP sync baseUrl is not configured");
+  }
+  const extraHeaders = headers ? await headers() : {};
   const response = await fetch(joinUrl(baseUrl, path), {
     method: "POST",
     headers: {
       "content-type": "application/json",
+      ...extraHeaders,
     },
     body: JSON.stringify(body),
   });

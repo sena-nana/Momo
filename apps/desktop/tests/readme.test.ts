@@ -30,6 +30,8 @@ describe("desktop README", () => {
     expect(readme).toContain("HTTP-like sync transport");
     expect(readme).toContain("createHttpSyncTransport");
     expect(readme).toContain("injected `fetch`");
+    expect(readme).toContain("headers provider");
+    expect(readme).toContain("baseUrl is not configured");
     expect(readme).toContain("route/status");
     expect(readme).toContain("runOnce");
     expect(readme).toContain("runs delta pull after delta push");

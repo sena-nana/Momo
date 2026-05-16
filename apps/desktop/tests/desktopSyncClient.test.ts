@@ -266,6 +266,62 @@ describe("desktop sync client adapter", () => {
     );
   });
 
+  it("adds configured HTTP sync transport headers to every request", async () => {
+    const fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: vi.fn().mockResolvedValue({
+        contractVersion: SYNC_CONTRACT_VERSION,
+        conflicts: [],
+        serverCursor: "cursor-0",
+        serverTime: "2026-05-16T12:00:00.000Z",
+      }),
+    });
+    const transport = createHttpSyncTransport({
+      baseUrl: "https://api.example.test",
+      fetch,
+      headers: async () => ({
+        authorization: "Bearer local-token",
+        "x-client-version": "desktop-test",
+      }),
+    });
+
+    await transport.listConflicts({
+      contractVersion: SYNC_CONTRACT_VERSION,
+      workspaceId: "local",
+      deviceId: "desktop-1",
+    });
+
+    expect(fetch).toHaveBeenCalledWith(
+      "https://api.example.test/sync/conflicts",
+      expect.objectContaining({
+        headers: {
+          "content-type": "application/json",
+          authorization: "Bearer local-token",
+          "x-client-version": "desktop-test",
+        },
+      }),
+    );
+  });
+
+  it("rejects missing HTTP sync transport base URLs before calling fetch", async () => {
+    const fetch = vi.fn();
+    const transport = createHttpSyncTransport({
+      baseUrl: "   ",
+      fetch,
+    });
+
+    await expect(
+      transport.deltaPull({
+        contractVersion: SYNC_CONTRACT_VERSION,
+        workspaceId: "local",
+        deviceId: "desktop-1",
+        sinceCursor: null,
+      }),
+    ).rejects.toThrow("HTTP sync baseUrl is not configured");
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
   it("surfaces injected HTTP fetch transport errors with method path and status", async () => {
     const fetch = vi.fn().mockResolvedValue({
       ok: false,
