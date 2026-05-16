@@ -169,6 +169,60 @@ describe("desktop MVP pages", () => {
     });
   });
 
+  it("clears inbox task due date and estimate", async () => {
+    const repository = fakeRepository({
+      inbox: [
+        task({
+          id: "inbox-1",
+          title: "Inbox task",
+          dueAt: "2026-05-19T14:15:00.000Z",
+          estimateMin: 30,
+        }),
+      ],
+    });
+
+    renderWithRepository(<Inbox />, repository);
+
+    const item = await screen.findByText("Inbox task");
+    const row = item.closest("li");
+    expect(row).not.toBeNull();
+
+    await userEvent.click(
+      within(row as HTMLElement).getByRole("button", {
+        name: "Edit Inbox task",
+      }),
+    );
+    fireEvent.change(screen.getByLabelText("Edit Inbox task due date"), {
+      target: { value: "" },
+    });
+    fireEvent.change(screen.getByLabelText("Edit Inbox task estimate minutes"), {
+      target: { value: "" },
+    });
+    await userEvent.click(screen.getByRole("button", { name: "Save Inbox task" }));
+
+    expect(repository.updateTask).toHaveBeenCalledWith("inbox-1", {
+      title: "Inbox task",
+      notes: "",
+      priority: 0,
+      dueAt: null,
+      estimateMin: null,
+    });
+  });
+
+  it("recovers inbox loading errors with retry", async () => {
+    const repository = fakeRepository();
+    vi.mocked(repository.listInbox)
+      .mockRejectedValueOnce(new Error("database locked"))
+      .mockResolvedValueOnce([task({ id: "inbox-1", title: "Recovered task" })]);
+
+    renderWithRepository(<Inbox />, repository);
+
+    expect(await screen.findByText("Error: database locked")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Retry" }));
+
+    expect(await screen.findByText("Recovered task")).toBeInTheDocument();
+  });
+
   it("shows a read-only seven-day agenda", async () => {
     const repository = fakeRepository({
       agenda: [
@@ -187,6 +241,26 @@ describe("desktop MVP pages", () => {
     expect(repository.listAgenda).toHaveBeenCalledTimes(1);
   });
 
+  it("recovers calendar loading errors with retry", async () => {
+    const repository = fakeRepository();
+    vi.mocked(repository.listAgenda)
+      .mockRejectedValueOnce(new Error("agenda unavailable"))
+      .mockResolvedValueOnce([
+        task({
+          id: "agenda-1",
+          title: "Recovered agenda",
+          dueAt: "2026-05-17T02:30:00.000Z",
+        }),
+      ]);
+
+    renderWithRepository(<Calendar />, repository);
+
+    expect(await screen.findByText("Error: agenda unavailable")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Retry" }));
+
+    expect(await screen.findByText("Recovered agenda")).toBeInTheDocument();
+  });
+
   it("shows local database status in settings", async () => {
     const repository = fakeRepository({
       stats: {
@@ -203,6 +277,26 @@ describe("desktop MVP pages", () => {
     expect(screen.getByText("4")).toBeInTheDocument();
     expect(screen.getByText("2")).toBeInTheDocument();
     expect(screen.getByText("1")).toBeInTheDocument();
+  });
+
+  it("recovers settings database status errors with retry", async () => {
+    const repository = fakeRepository();
+    vi.mocked(repository.getStats)
+      .mockRejectedValueOnce(new Error("stats unavailable"))
+      .mockResolvedValueOnce({
+        databasePath: "sqlite:momo.db",
+        totalTasks: 5,
+        activeTasks: 3,
+        completedTasks: 2,
+      });
+
+    renderWithRepository(<Settings />, repository);
+
+    expect(await screen.findByText("Error: stats unavailable")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Retry" }));
+
+    expect(await screen.findByText("sqlite:momo.db")).toBeInTheDocument();
+    expect(screen.getByText("5")).toBeInTheDocument();
   });
 
   it("shows a compact widget view of today's tasks", async () => {

@@ -1,7 +1,7 @@
 import { FormEvent, useEffect, useState } from "react";
-import { Check, Loader2, Pencil, Save, Trash2, X } from "lucide-react";
+import { Check, Loader2, Pencil, RefreshCw, Save, Trash2, X } from "lucide-react";
 import { useTaskRepository } from "../data/TaskRepositoryContext";
-import type { Task, TaskPriority } from "../domain/tasks";
+import type { Task, TaskPriority, UpdateTaskInput } from "../domain/tasks";
 
 interface DraftTask {
   title: string;
@@ -42,13 +42,23 @@ export default function Inbox() {
   }, []);
 
   async function completeTask(task: Task) {
-    await repository.setStatus(task.id, "completed");
-    await load();
+    setError(null);
+    try {
+      await repository.setStatus(task.id, "completed");
+      await load();
+    } catch (e) {
+      setError(String(e));
+    }
   }
 
   async function deleteTask(task: Task) {
-    await repository.deleteTask(task.id);
-    await load();
+    setError(null);
+    try {
+      await repository.deleteTask(task.id);
+      await load();
+    } catch (e) {
+      setError(String(e));
+    }
   }
 
   function beginEdit(task: Task) {
@@ -65,18 +75,29 @@ export default function Inbox() {
   async function saveEdit(event: FormEvent, task: Task) {
     event.preventDefault();
     if (!draft.title.trim()) return;
-    const patch = {
+    const patch: UpdateTaskInput = {
       title: draft.title,
       notes: draft.notes,
       priority: draft.priority,
-      ...(draft.dueAtInput ? { dueAt: dateTimeInputToIso(draft.dueAtInput) } : {}),
-      ...(draft.estimateInput
-        ? { estimateMin: estimateInputToNumber(draft.estimateInput) }
-        : {}),
     };
-    await repository.updateTask(task.id, patch);
-    setEditing(null);
-    await load();
+    if (draft.dueAtInput) {
+      patch.dueAt = dateTimeInputToIso(draft.dueAtInput);
+    } else if (task.dueAt) {
+      patch.dueAt = null;
+    }
+    if (draft.estimateInput) {
+      patch.estimateMin = estimateInputToNumber(draft.estimateInput);
+    } else if (task.estimateMin != null) {
+      patch.estimateMin = null;
+    }
+    setError(null);
+    try {
+      await repository.updateTask(task.id, patch);
+      setEditing(null);
+      await load();
+    } catch (e) {
+      setError(String(e));
+    }
   }
 
   return (
@@ -92,13 +113,21 @@ export default function Inbox() {
           <p>Loading inbox...</p>
         </div>
       )}
-      {error && <p className="err">{error}</p>}
-      {!loading && tasks.length === 0 && (
-        <div className="card empty">
-          <p>No inbox tasks. Add one from Today without a date in a later capture flow.</p>
+      {error && (
+        <div className="card state state--error">
+          <p>{error}</p>
+          <button type="button" onClick={load}>
+            <RefreshCw size={16} aria-hidden="true" />
+            Retry
+          </button>
         </div>
       )}
-      {!loading && tasks.length > 0 && (
+      {!loading && !error && tasks.length === 0 && (
+        <div className="card empty">
+          <p>No inbox tasks. Add one from Today and choose Inbox.</p>
+        </div>
+      )}
+      {!loading && !error && tasks.length > 0 && (
         <ul className="card task-list task-list--roomy">
           {tasks.map((task) => (
             <li key={task.id} className="task-item task-item--actions">

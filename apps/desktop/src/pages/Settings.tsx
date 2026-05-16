@@ -1,22 +1,28 @@
 import { useEffect, useState } from "react";
-import { Database, Loader2 } from "lucide-react";
+import { Database, Loader2, RefreshCw } from "lucide-react";
 import { useTaskRepository } from "../data/TaskRepositoryContext";
 import type { DatabaseStats } from "../data/taskRepository";
 
 export default function Settings() {
   const repository = useTaskRepository();
   const [stats, setStats] = useState<DatabaseStats | null>(null);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    async function load() {
-      try {
-        setStats(await repository.getStats());
-      } catch (e) {
-        setError(String(e));
-      }
+  async function load() {
+    setLoading(true);
+    setError(null);
+    try {
+      setStats(await repository.getStats());
+    } catch (e) {
+      setStats(null);
+      setError(String(e));
+    } finally {
+      setLoading(false);
     }
+  }
 
+  useEffect(() => {
     void load();
   }, []);
 
@@ -40,14 +46,22 @@ export default function Settings() {
           <h2>Local database</h2>
           <Database size={16} aria-hidden="true" />
         </div>
-        {error && <p className="err">{error}</p>}
-        {!stats && !error && (
+        {error && (
+          <div className="state state--error">
+            <p>{error}</p>
+            <button type="button" onClick={load}>
+              <RefreshCw size={16} aria-hidden="true" />
+              Retry
+            </button>
+          </div>
+        )}
+        {loading && !error && (
           <div className="state state--inline">
             <Loader2 className="spin" size={18} aria-hidden="true" />
             <p>Loading database status...</p>
           </div>
         )}
-        {stats && (
+        {stats && !loading && !error && (
           <ul className="kv">
             <li><span>Path</span><b>{stats.databasePath}</b></li>
             <li><span>Total tasks</span><b>{stats.totalTasks}</b></li>

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { CalendarDays, Loader2 } from "lucide-react";
+import { CalendarDays, Loader2, RefreshCw } from "lucide-react";
 import { useTaskRepository } from "../data/TaskRepositoryContext";
 import type { Task } from "../domain/tasks";
 
@@ -9,25 +9,25 @@ export default function Calendar() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    async function load() {
-      setLoading(true);
-      setError(null);
-      const start = new Date();
-      start.setHours(0, 0, 0, 0);
-      const end = new Date(start);
-      end.setDate(end.getDate() + 6);
-      end.setHours(23, 59, 59, 999);
+  async function load() {
+    setLoading(true);
+    setError(null);
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(start);
+    end.setDate(end.getDate() + 6);
+    end.setHours(23, 59, 59, 999);
 
-      try {
-        setTasks(await repository.listAgenda(start, end));
-      } catch (e) {
-        setError(String(e));
-      } finally {
-        setLoading(false);
-      }
+    try {
+      setTasks(await repository.listAgenda(start, end));
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setLoading(false);
     }
+  }
 
+  useEffect(() => {
     void load();
   }, []);
 
@@ -44,14 +44,22 @@ export default function Calendar() {
           <p>Loading agenda...</p>
         </div>
       )}
-      {error && <p className="err">{error}</p>}
-      {!loading && tasks.length === 0 && (
+      {error && (
+        <div className="card state state--error">
+          <p>{error}</p>
+          <button type="button" onClick={load}>
+            <RefreshCw size={16} aria-hidden="true" />
+            Retry
+          </button>
+        </div>
+      )}
+      {!loading && !error && tasks.length === 0 && (
         <div className="card empty">
           <CalendarDays size={20} aria-hidden="true" />
           <p>No scheduled tasks in the next 7 days.</p>
         </div>
       )}
-      {!loading && tasks.length > 0 && (
+      {!loading && !error && tasks.length > 0 && (
         <ol className="timeline">
           {tasks.map((task) => (
             <li key={task.id} className="timeline__item">
