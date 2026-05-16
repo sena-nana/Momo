@@ -27,6 +27,8 @@ export interface TaskRepository {
   deleteTask(id: string): Promise<void>;
   listPendingChanges(): Promise<LocalChange[]>;
   markChangeSynced(id: string, syncedAt?: Date): Promise<void>;
+  getSyncState(): Promise<SyncState>;
+  saveSyncState(input: SaveSyncStateInput): Promise<SyncState>;
   listToday(now: Date): Promise<TodayTaskGroups>;
   listInbox(): Promise<Task[]>;
   listAgenda(start: Date, end: Date): Promise<Task[]>;
@@ -59,6 +61,27 @@ export interface LocalChangeRow {
   synced_at: string | null;
 }
 
+export interface SyncState {
+  serverCursor: string | null;
+  lastSyncedAt: string | null;
+  lastError: string | null;
+  updatedAt: string | null;
+}
+
+export interface SaveSyncStateInput {
+  serverCursor: string | null;
+  lastSyncedAt: string | null;
+  lastError: string | null;
+}
+
+export interface SyncStateRow {
+  id: string;
+  server_cursor: string | null;
+  last_synced_at: string | null;
+  last_error: string | null;
+  updated_at: string;
+}
+
 export interface DatabaseStats {
   totalTasks: number;
   activeTasks: number;
@@ -76,6 +99,7 @@ interface RepositoryOptions {
 type DatabaseLoader = (path: string) => Promise<SqlDatabase>;
 
 const MOMO_DATABASE_PATH = "sqlite:momo.db";
+const SYNC_STATE_ID = "default";
 
 export function createTaskRepository(
   loadDatabase: DatabaseLoader = (path) => Database.load(path),
@@ -264,6 +288,45 @@ export function createTaskRepository(
       );
     },
 
+    async getSyncState() {
+      await init();
+      const db = await getDb();
+      const rows = await db.select<SyncStateRow>(
+        "SELECT * FROM sync_state WHERE id = $1 LIMIT 1",
+        [SYNC_STATE_ID],
+      );
+      return rows[0] ? mapSyncStateRow(rows[0]) : emptySyncState();
+    },
+
+    async saveSyncState(input) {
+      await init();
+      const timestamp = now().toISOString();
+      const db = await getDb();
+      await db.execute(
+        `INSERT INTO sync_state (
+          id, server_cursor, last_synced_at, last_error, updated_at
+        ) VALUES ($1, $2, $3, $4, $5)
+        ON CONFLICT(id) DO UPDATE SET
+          server_cursor = excluded.server_cursor,
+          last_synced_at = excluded.last_synced_at,
+          last_error = excluded.last_error,
+          updated_at = excluded.updated_at`,
+        [
+          SYNC_STATE_ID,
+          input.serverCursor,
+          input.lastSyncedAt,
+          input.lastError,
+          timestamp,
+        ],
+      );
+      return {
+        serverCursor: input.serverCursor,
+        lastSyncedAt: input.lastSyncedAt,
+        lastError: input.lastError,
+        updatedAt: timestamp,
+      };
+    },
+
     async listToday(currentDate) {
       await init();
       const { start, end } = getDayBounds(currentDate);
@@ -382,10 +445,19 @@ const SCHEMA = [
     created_at TEXT NOT NULL,
     synced_at TEXT
   )`,
+  `CREATE TABLE IF NOT EXISTS sync_state (
+    id TEXT PRIMARY KEY,
+    server_cursor TEXT,
+    last_synced_at TEXT,
+    last_error TEXT,
+    updated_at TEXT NOT NULL
+  )`,
   `INSERT OR IGNORE INTO schema_migrations (version, name, applied_at)
    VALUES (1, 'create_tasks', datetime('now'))`,
   `INSERT OR IGNORE INTO schema_migrations (version, name, applied_at)
    VALUES (2, 'create_local_changes', datetime('now'))`,
+  `INSERT OR IGNORE INTO schema_migrations (version, name, applied_at)
+   VALUES (3, 'create_sync_state', datetime('now'))`,
 ];
 
 function mapLocalChangeRow(row: LocalChangeRow): LocalChange {
@@ -406,4 +478,22 @@ function parsePayload(payload: string) {
   } catch {
     return payload;
   }
+}
+
+function mapSyncStateRow(row: SyncStateRow): SyncState {
+  return {
+    serverCursor: row.server_cursor,
+    lastSyncedAt: row.last_synced_at,
+    lastError: row.last_error,
+    updatedAt: row.updated_at,
+  };
+}
+
+function emptySyncState(): SyncState {
+  return {
+    serverCursor: null,
+    lastSyncedAt: null,
+    lastError: null,
+    updatedAt: null,
+  };
 }

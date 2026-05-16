@@ -40,10 +40,11 @@ npm install
 
 - SQLite 由 `@tauri-apps/plugin-sql` / `tauri-plugin-sql` 提供，连接固定为 `sqlite:momo.db`。
 - 前端通过 `TaskRepository` 访问数据，页面不直接写 SQL。
-- 当前 schema 包含 `schema_migrations`、`tasks` 与 `local_changes`；`tags` 以 JSON text 存储，时间统一保存 ISO 字符串。
+- 当前 schema 包含 `schema_migrations`、`tasks`、`local_changes` 与 `sync_state`；`tags` 以 JSON text 存储，时间统一保存 ISO 字符串。
 - `Today` 支持快速添加今日或 Inbox 任务、查看逾期/今日/今日完成；`Inbox` 支持编辑、完成、删除无截止日期任务；`Calendar` 先提供未来 7 天只读 agenda。
 - `local_changes` 记录本地 create / update / status / delete 变更，为后续 Delta Sync 使用。
 - `Settings` 的 Local database 卡片显示 `Pending sync`，即尚未标记 synced 的本地变更数量。
+- `TaskRepository.getSyncState()` / `saveSyncState()` 读写本地同步状态：最新 server cursor、最近同步时间、最近错误与状态更新时间。
 
 ## 共享契约
 
@@ -61,10 +62,11 @@ npm install
 - `summarizePendingConflicts()` 可把待处理冲突映射成只读展示摘要，保留 conflict/task/change id、原因、server task 标题/版本与 client payload 摘要。
 - Settings 目前会在有冲突摘要时展示只读 `Sync conflicts` 列表占位，不提供解决按钮。
 - Settings 也支持注入只读 `Sync status` 摘要，用于展示最近一次同步运行结果、计数和 cursor。
+- Settings 会从本地 `sync_state` 读取并展示只读 `Sync state`，用于排查 cursor、最近同步时间和最近错误。
 - Settings 可注入 `onRunLocalSyncSimulation` 显示 `Local sync simulation` 演示按钮；该按钮是 keyboard-accessible 的普通 button，只调用注入回调，不会自动连接真实网络。
 - 当前没有真实网络请求、账号、后台任务或定时同步；这些仍属于后续 BE-01 / BE-03 范围。
 
-下一轮建议先做 `cursor state boundary`：在本地持久化最新 server cursor 与最近同步错误，再把已有 `sync runner boundary` 和 `local simulation entrypoint` 连接到该状态层；仍先不接真实网络层。
+下一轮建议把 `sync runner boundary` 和 `local simulation entrypoint` 接到 `sync_state` 这个 `cursor state boundary`：成功时保存 server cursor / last synced，失败时保存 last error；仍先不接真实网络层。
 
 ## 当前限制
 

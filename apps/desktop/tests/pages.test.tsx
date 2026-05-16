@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import { TaskRepositoryProvider } from "../src/data/TaskRepositoryContext";
 import type {
   DatabaseStats,
+  SyncState,
   TaskRepository,
 } from "../src/data/taskRepository";
 import type { CreateTaskInput, Task, TodayTaskGroups } from "../src/domain/tasks";
@@ -288,6 +289,24 @@ describe("desktop MVP pages", () => {
     expect(within(pendingRow as HTMLElement).getByText("3")).toBeInTheDocument();
   });
 
+  it("shows local sync cursor state in settings", async () => {
+    const repository = fakeRepository({
+      syncState: {
+        serverCursor: "cursor-7",
+        lastSyncedAt: "2026-05-16T12:00:00.000Z",
+        lastError: "previous sync failure",
+        updatedAt: "2026-05-16T12:01:00.000Z",
+      },
+    });
+
+    renderWithRepository(<Settings />, repository);
+
+    expect(await screen.findByText("Sync state")).toBeInTheDocument();
+    expect(screen.getByText("cursor-7")).toBeInTheDocument();
+    expect(screen.getByText("2026-05-16T12:00:00.000Z")).toBeInTheDocument();
+    expect(screen.getByText("previous sync failure")).toBeInTheDocument();
+  });
+
   it("shows read-only pending sync conflict summaries in settings", async () => {
     const repository = fakeRepository();
     const conflicts: PendingConflictSummary[] = [
@@ -453,6 +472,7 @@ function fakeRepository(overrides: {
   inbox?: Task[];
   agenda?: Task[];
   stats?: DatabaseStats;
+  syncState?: SyncState;
 } = {}): TaskRepository {
   const today = overrides.today ?? {
     overdue: [],
@@ -465,6 +485,12 @@ function fakeRepository(overrides: {
     activeTasks: 0,
     completedTasks: 0,
     pendingLocalChanges: 0,
+  };
+  const syncState = overrides.syncState ?? {
+    serverCursor: null,
+    lastSyncedAt: null,
+    lastError: null,
+    updatedAt: null,
   };
 
   return {
@@ -482,6 +508,10 @@ function fakeRepository(overrides: {
     listInbox: vi.fn().mockResolvedValue(overrides.inbox ?? []),
     listAgenda: vi.fn().mockResolvedValue(overrides.agenda ?? []),
     getStats: vi.fn().mockResolvedValue(stats),
+    listPendingChanges: vi.fn().mockResolvedValue([]),
+    markChangeSynced: vi.fn().mockResolvedValue(undefined),
+    getSyncState: vi.fn().mockResolvedValue(syncState),
+    saveSyncState: vi.fn().mockResolvedValue(syncState),
   };
 }
 

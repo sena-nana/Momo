@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Database, Loader2, RefreshCw } from "lucide-react";
 import { useTaskRepository } from "../data/TaskRepositoryContext";
-import type { DatabaseStats } from "../data/taskRepository";
+import type { DatabaseStats, SyncState } from "../data/taskRepository";
 import type {
   LocalSyncSimulationResult,
   PendingConflictSummary,
@@ -21,6 +21,7 @@ export default function Settings({
 }: SettingsProps) {
   const repository = useTaskRepository();
   const [stats, setStats] = useState<DatabaseStats | null>(null);
+  const [syncState, setSyncState] = useState<SyncState | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [simulationResult, setSimulationResult] =
@@ -35,9 +36,15 @@ export default function Settings({
     setLoading(true);
     setError(null);
     try {
-      setStats(await repository.getStats());
+      const [nextStats, nextSyncState] = await Promise.all([
+        repository.getStats(),
+        repository.getSyncState(),
+      ]);
+      setStats(nextStats);
+      setSyncState(nextSyncState);
     } catch (e) {
       setStats(null);
+      setSyncState(null);
       setError(String(e));
     } finally {
       setLoading(false);
@@ -106,6 +113,20 @@ export default function Settings({
           </ul>
         )}
       </div>
+
+      {syncState && !loading && !error && (
+        <div className="card">
+          <div className="section-title">
+            <h2>Sync state</h2>
+          </div>
+          <ul className="kv">
+            <li><span>Server cursor</span><b>{syncState.serverCursor ?? "none"}</b></li>
+            <li><span>Last synced</span><b>{syncState.lastSyncedAt ?? "Never synced"}</b></li>
+            <li><span>Last error</span><b>{syncState.lastError ?? "None"}</b></li>
+            <li><span>Updated</span><b>{syncState.updatedAt ?? "Not recorded"}</b></li>
+          </ul>
+        </div>
+      )}
 
       {onRunLocalSyncSimulation && (
         <div className="card">

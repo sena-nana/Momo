@@ -12,6 +12,9 @@ describe("desktop README", () => {
     const readme = readFileSync(readmePath, "utf-8");
 
     expect(readme).toContain("Pending sync");
+    expect(readme).toContain("sync_state");
+    expect(readme).toContain("getSyncState");
+    expect(readme).toContain("saveSyncState");
     expect(readme).toContain("buildDeltaPushFromPendingChanges");
     expect(readme).toContain("applyDeltaPushResponse");
     expect(readme).toContain("runLocalSyncSimulation");
@@ -25,6 +28,7 @@ describe("desktop README", () => {
     expect(readme).toContain("summarizePendingConflicts");
     expect(readme).toContain("Sync conflicts");
     expect(readme).toContain("Sync status");
+    expect(readme).toContain("Sync state");
     expect(readme).toContain("onRunLocalSyncSimulation");
     expect(readme).toContain("Local sync simulation");
     expect(readme).toContain("keyboard-accessible");

@@ -8,6 +8,7 @@ import {
   createTaskRepository,
   type LocalChangeRow,
   type SqlDatabase,
+  type SyncStateRow,
 } from "../src/data/taskRepository";
 
 describe("task domain", () => {
@@ -89,6 +90,7 @@ describe("TaskRepository", () => {
     expect(db.executedSql.join("\n")).toContain("CREATE TABLE IF NOT EXISTS tasks");
     expect(db.executedSql.join("\n")).toContain("CREATE TABLE IF NOT EXISTS schema_migrations");
     expect(db.executedSql.join("\n")).toContain("CREATE TABLE IF NOT EXISTS local_changes");
+    expect(db.executedSql.join("\n")).toContain("CREATE TABLE IF NOT EXISTS sync_state");
   });
 
   it("creates a normalized active task row and records a local change", async () => {
@@ -198,6 +200,64 @@ describe("TaskRepository", () => {
       pendingLocalChanges: 3,
     });
   });
+
+  it("loads and saves local sync cursor state", async () => {
+    const db = new RecordingDatabase({
+      syncState: [
+        {
+          id: "default",
+          server_cursor: "cursor-7",
+          last_synced_at: "2026-05-16T12:00:00.000Z",
+          last_error: "previous failure",
+          updated_at: "2026-05-16T12:01:00.000Z",
+        },
+      ],
+    });
+    const repository = createTaskRepository(() => Promise.resolve(db), {
+      now: () => new Date("2026-05-16T12:02:00.000Z"),
+    });
+
+    await expect(repository.getSyncState()).resolves.toEqual({
+      serverCursor: "cursor-7",
+      lastSyncedAt: "2026-05-16T12:00:00.000Z",
+      lastError: "previous failure",
+      updatedAt: "2026-05-16T12:01:00.000Z",
+    });
+
+    await expect(
+      repository.saveSyncState({
+        serverCursor: "cursor-8",
+        lastSyncedAt: "2026-05-16T12:03:00.000Z",
+        lastError: null,
+      }),
+    ).resolves.toEqual({
+      serverCursor: "cursor-8",
+      lastSyncedAt: "2026-05-16T12:03:00.000Z",
+      lastError: null,
+      updatedAt: "2026-05-16T12:02:00.000Z",
+    });
+
+    expect(db.paramsForSql("INSERT INTO sync_state")).toEqual([
+      "default",
+      "cursor-8",
+      "2026-05-16T12:03:00.000Z",
+      null,
+      "2026-05-16T12:02:00.000Z",
+    ]);
+  });
+
+  it("returns an empty local sync state before the first sync", async () => {
+    const repository = createTaskRepository(
+      () => Promise.resolve(new RecordingDatabase()),
+    );
+
+    await expect(repository.getSyncState()).resolves.toEqual({
+      serverCursor: null,
+      lastSyncedAt: null,
+      lastError: null,
+      updatedAt: null,
+    });
+  });
 });
 
 function task(overrides: Partial<ReturnType<typeof baseTask>>) {
@@ -225,6 +285,7 @@ class RecordingDatabase implements SqlDatabase {
 
   constructor(private rows: {
     localChanges?: LocalChangeRow[];
+    syncState?: SyncStateRow[];
     stats?: Array<{
       total_tasks: number;
       active_tasks: number;
@@ -248,6 +309,9 @@ class RecordingDatabase implements SqlDatabase {
     }
     if (sql.includes("FROM local_changes")) {
       return (this.rows.localChanges ?? []) as T[];
+    }
+    if (sql.includes("FROM sync_state")) {
+      return (this.rows.syncState ?? []) as T[];
     }
     return [] as T[];
   }
