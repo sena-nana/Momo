@@ -68,6 +68,19 @@ export interface ResolveTaskConflictResponse {
   serverTime: string;
 }
 
+export interface ListTaskConflictsRequest {
+  contractVersion: typeof SYNC_CONTRACT_VERSION;
+  workspaceId: string;
+  deviceId: string;
+}
+
+export interface ListTaskConflictsResponse {
+  contractVersion: typeof SYNC_CONTRACT_VERSION;
+  conflicts: TaskConflictDto[];
+  serverCursor: string;
+  serverTime: string;
+}
+
 export interface DeltaPushRequest {
   contractVersion: typeof SYNC_CONTRACT_VERSION;
   workspaceId: string;
@@ -162,5 +175,16 @@ export function createResolveTaskConflictRequest(input: {
     strategy: input.strategy,
     resolvedBy: input.resolvedBy,
     note: input.note ?? null,
+  };
+}
+
+export function createListTaskConflictsRequest(input: {
+  workspaceId: string;
+  deviceId: string;
+}): ListTaskConflictsRequest {
+  return {
+    contractVersion: SYNC_CONTRACT_VERSION,
+    workspaceId: input.workspaceId,
+    deviceId: input.deviceId,
   };
 }

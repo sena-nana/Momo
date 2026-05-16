@@ -5,6 +5,8 @@ import {
   type DeltaPullResponse,
   type DeltaPushRequest,
   type DeltaPushResponse,
+  type ListTaskConflictsRequest,
+  type ListTaskConflictsResponse,
   type LocalChangeDto,
   type ResolveTaskConflictRequest,
   type ResolveTaskConflictResponse,
@@ -19,6 +21,9 @@ export * from "./router";
 export interface SyncApi {
   deltaPush(request: DeltaPushRequest): Promise<DeltaPushResponse>;
   deltaPull(request: DeltaPullRequest): Promise<DeltaPullResponse>;
+  listConflicts(
+    request: ListTaskConflictsRequest,
+  ): Promise<ListTaskConflictsResponse>;
   resolveConflict(
     request: ResolveTaskConflictRequest,
   ): Promise<ResolveTaskConflictResponse>;
@@ -31,6 +36,7 @@ export interface SyncStore {
     now: Date,
   ): Promise<ApplyChangeResult>;
   listChanges(workspaceId: string, sinceCursor: string | null): Promise<SyncSnapshot>;
+  listConflicts(workspaceId: string): Promise<TaskConflictDto[]>;
   currentCursor(workspaceId: string): Promise<string>;
   resolveConflict(
     workspaceId: string,
@@ -155,6 +161,17 @@ export function createSyncApi({ store, now = () => new Date() }: SyncApiOptions)
       };
     },
 
+    async listConflicts(request) {
+      assertSupportedContract(request.contractVersion);
+
+      return {
+        contractVersion: SYNC_CONTRACT_VERSION,
+        conflicts: await store.listConflicts(request.workspaceId),
+        serverCursor: await store.currentCursor(request.workspaceId),
+        serverTime: now().toISOString(),
+      };
+    },
+
     async resolveConflict(request) {
       assertSupportedContract(request.contractVersion);
       const result = await store.resolveConflict(request.workspaceId, request);
@@ -261,6 +278,10 @@ export function createInMemorySyncStore(): SyncStore {
 
     async currentCursor(workspaceId) {
       return formatCursor(workspaceFor(workspaceId).version);
+    },
+
+    async listConflicts(workspaceId) {
+      return [...workspaceFor(workspaceId).conflicts.values()];
     },
 
     async resolveConflict(workspaceId, request) {

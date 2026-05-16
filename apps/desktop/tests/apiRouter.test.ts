@@ -9,6 +9,7 @@ import {
 } from "../../../apps/api/src";
 import {
   createDeltaPushRequest,
+  createListTaskConflictsRequest,
   createResolveTaskConflictRequest,
   type LocalChangeDto,
 } from "../../../packages/contracts/src";
@@ -23,6 +24,7 @@ describe("API route adapter skeleton", () => {
       "DELETE /tasks/:id",
       "POST /sync/delta/push",
       "POST /sync/delta/pull",
+      "GET /sync/conflicts",
       "POST /sync/conflicts/resolve",
     ]);
   });
@@ -290,6 +292,65 @@ describe("API route adapter skeleton", () => {
         strategy: "manual",
         status: "pending_manual",
         resolvedTask: null,
+        serverCursor: "cursor-2",
+      },
+    });
+  });
+
+  it("routes pending sync conflict list requests", async () => {
+    const router = createRouter();
+    await router.handle({
+      method: "POST",
+      path: "/sync/delta/push",
+      body: createDeltaPushRequest({
+        workspaceId: "workspace-a",
+        deviceId: "desktop-1",
+        changes: [taskCreateChange("change-1", "Original task", 0)],
+        now: new Date("2026-05-16T09:01:00.000Z"),
+      }),
+    });
+    await router.handle({
+      method: "POST",
+      path: "/sync/delta/push",
+      body: createDeltaPushRequest({
+        workspaceId: "workspace-a",
+        deviceId: "desktop-1",
+        changes: [taskUpdateChange("change-2", "Server task", 1)],
+        now: new Date("2026-05-16T09:02:00.000Z"),
+      }),
+    });
+    await router.handle({
+      method: "POST",
+      path: "/sync/delta/push",
+      body: createDeltaPushRequest({
+        workspaceId: "workspace-a",
+        deviceId: "desktop-1",
+        changes: [taskUpdateChange("change-3", "Stale task", 1)],
+        now: new Date("2026-05-16T09:03:00.000Z"),
+      }),
+    });
+
+    await expect(
+      router.handle({
+        method: "GET",
+        path: "/sync/conflicts",
+        body: createListTaskConflictsRequest({
+          workspaceId: "workspace-a",
+          deviceId: "desktop-1",
+        }),
+      }),
+    ).resolves.toMatchObject({
+      status: 200,
+      body: {
+        conflicts: [
+          {
+            id: "conflict-change-3",
+            taskId: "task-1",
+            serverTask: {
+              title: "Server task",
+            },
+          },
+        ],
         serverCursor: "cursor-2",
       },
     });

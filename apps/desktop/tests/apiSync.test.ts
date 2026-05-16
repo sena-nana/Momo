@@ -3,6 +3,7 @@ import {
   SYNC_CONTRACT_VERSION,
   createDeltaPullRequest,
   createDeltaPushRequest,
+  createListTaskConflictsRequest,
   createResolveTaskConflictRequest,
   type LocalChangeDto,
 } from "../../../packages/contracts/src";
@@ -628,6 +629,128 @@ describe("API sync service skeleton", () => {
         priority: 0,
         version: 2,
       },
+      serverCursor: "cursor-2",
+    });
+  });
+
+  it("lists only unresolved conflicts for a workspace", async () => {
+    const api = createSyncApi({
+      store: createInMemorySyncStore(),
+      now: () => new Date("2026-05-16T12:00:00.000Z"),
+    });
+
+    await api.deltaPush(
+      push("local", [
+        taskCreateChange("change-1", {
+          id: "task-1",
+          title: "Original task",
+          updatedAt: "2026-05-16T10:00:00.000Z",
+        }),
+      ]),
+    );
+    await api.deltaPush(
+      push("local", [
+        {
+          id: "change-2",
+          entityType: "task",
+          entityId: "task-1",
+          action: "task.update",
+          payload: {
+            id: "task-1",
+            baseVersion: 1,
+            patch: { title: "Server-side edit" },
+            updatedAt: "2026-05-16T10:10:00.000Z",
+          },
+          createdAt: "2026-05-16T10:11:00.000Z",
+        },
+      ]),
+    );
+    await api.deltaPush(
+      push("local", [
+        {
+          id: "change-3",
+          entityType: "task",
+          entityId: "task-1",
+          action: "task.update",
+          payload: {
+            id: "task-1",
+            baseVersion: 1,
+            patch: { title: "Pending local edit" },
+            updatedAt: "2026-05-16T10:12:00.000Z",
+          },
+          createdAt: "2026-05-16T10:13:00.000Z",
+        },
+      ]),
+    );
+
+    await expect(
+      api.listConflicts(
+        createListTaskConflictsRequest({
+          workspaceId: "local",
+          deviceId: "desktop-1",
+        }),
+      ),
+    ).resolves.toMatchObject({
+      contractVersion: SYNC_CONTRACT_VERSION,
+      conflicts: [
+        {
+          id: "conflict-change-3",
+          taskId: "task-1",
+          changeId: "change-3",
+          clientPayload: {
+            patch: { title: "Pending local edit" },
+          },
+          serverTask: {
+            title: "Server-side edit",
+            version: 2,
+          },
+        },
+      ],
+      serverCursor: "cursor-2",
+      serverTime: "2026-05-16T12:00:00.000Z",
+    });
+
+    await api.resolveConflict(
+      createResolveTaskConflictRequest({
+        workspaceId: "local",
+        deviceId: "desktop-1",
+        conflictId: "conflict-change-3",
+        strategy: "manual",
+        resolvedBy: "user-1",
+      }),
+    );
+
+    await expect(
+      api.listConflicts(
+        createListTaskConflictsRequest({
+          workspaceId: "local",
+          deviceId: "desktop-1",
+        }),
+      ),
+    ).resolves.toMatchObject({
+      conflicts: [{ id: "conflict-change-3" }],
+      serverCursor: "cursor-2",
+    });
+
+    await api.resolveConflict(
+      createResolveTaskConflictRequest({
+        workspaceId: "local",
+        deviceId: "desktop-1",
+        conflictId: "conflict-change-3",
+        strategy: "server_wins",
+        resolvedBy: "user-1",
+      }),
+    );
+
+    await expect(
+      api.listConflicts(
+        createListTaskConflictsRequest({
+          workspaceId: "local",
+          deviceId: "desktop-1",
+        }),
+      ),
+    ).resolves.toMatchObject({
+      conflicts: [],
       serverCursor: "cursor-2",
     });
   });

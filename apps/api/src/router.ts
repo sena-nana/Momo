@@ -1,6 +1,7 @@
 import type {
   DeltaPullRequest,
   DeltaPushRequest,
+  ListTaskConflictsRequest,
   ResolveTaskConflictRequest,
 } from "../../../packages/contracts/src";
 import type {
@@ -36,6 +37,7 @@ export const API_ROUTES = [
   { method: "DELETE", path: "/tasks/:id", name: "tasks.delete" },
   { method: "POST", path: "/sync/delta/push", name: "sync.deltaPush" },
   { method: "POST", path: "/sync/delta/pull", name: "sync.deltaPull" },
+  { method: "GET", path: "/sync/conflicts", name: "sync.listConflicts" },
   {
     method: "POST",
     path: "/sync/conflicts/resolve",
@@ -129,6 +131,10 @@ async function handleSyncRoute(
 
   if (request.method === "POST" && segments.join("/") === "sync/delta/pull") {
     return json(200, await syncApi.deltaPull(body as DeltaPullRequest));
+  }
+
+  if (request.method === "GET" && segments.join("/") === "sync/conflicts") {
+    return json(200, await syncApi.listConflicts(body as ListTaskConflictsRequest));
   }
 
   if (request.method === "POST" && segments.join("/") === "sync/conflicts/resolve") {

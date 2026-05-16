@@ -24,7 +24,12 @@
 | DELETE | `/tasks/:id` | `tasks.delete` |
 | POST | `/sync/delta/push` | `sync.deltaPush` |
 | POST | `/sync/delta/pull` | `sync.deltaPull` |
+| GET | `/sync/conflicts` | `sync.listConflicts` |
 | POST | `/sync/conflicts/resolve` | `sync.resolveConflict` |
+
+`GET /sync/conflicts` 是当前内存 sync 的只读待处理冲突列表，返回尚未
+`server_wins` / `client_wins` 解决的冲突。`manual` 只表示等待人工处理，
+不会把冲突从列表移除。
 
 `POST /sync/conflicts/resolve` 的 `manual` 策略只把冲突标记为等待人工处理：
 返回 HTTP-like `202`，body 中 `status` 为 `pending_manual`，`resolvedTask` 为

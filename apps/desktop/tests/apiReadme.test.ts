@@ -13,4 +13,15 @@ describe("API README", () => {
     expect(readme).toContain("202");
     expect(readme).toContain("manual");
   });
+
+  it("documents the pending conflict list route", () => {
+    const readme = readFileSync(
+      resolve(process.cwd(), "../../apps/api/README.md"),
+      "utf-8",
+    );
+
+    expect(readme).toContain("GET");
+    expect(readme).toContain("/sync/conflicts");
+    expect(readme).toContain("sync.listConflicts");
+  });
 });
