@@ -448,6 +448,81 @@ describe("API sync service skeleton", () => {
       serverTime: "2026-05-16T12:00:00.000Z",
     });
   });
+
+  it("resolves a stored conflict with the client_wins strategy", async () => {
+    const api = createSyncApi({
+      store: createInMemorySyncStore(),
+      now: () => new Date("2026-05-16T12:00:00.000Z"),
+    });
+
+    await api.deltaPush(
+      push("local", [
+        taskCreateChange("change-1", {
+          id: "task-1",
+          title: "Original task",
+          updatedAt: "2026-05-16T10:00:00.000Z",
+        }),
+      ]),
+    );
+    await api.deltaPush(
+      push("local", [
+        {
+          id: "change-2",
+          entityType: "task",
+          entityId: "task-1",
+          action: "task.update",
+          payload: {
+            id: "task-1",
+            baseVersion: 1,
+            patch: { title: "Server-side edit" },
+            updatedAt: "2026-05-16T10:10:00.000Z",
+          },
+          createdAt: "2026-05-16T10:11:00.000Z",
+        },
+      ]),
+    );
+    await api.deltaPush(
+      push("local", [
+        {
+          id: "change-3",
+          entityType: "task",
+          entityId: "task-1",
+          action: "task.update",
+          payload: {
+            id: "task-1",
+            baseVersion: 1,
+            patch: { title: "Client chosen edit", priority: 3 },
+            updatedAt: "2026-05-16T10:12:00.000Z",
+          },
+          createdAt: "2026-05-16T10:13:00.000Z",
+        },
+      ]),
+    );
+
+    await expect(
+      api.resolveConflict(
+        createResolveTaskConflictRequest({
+          workspaceId: "local",
+          deviceId: "desktop-1",
+          conflictId: "conflict-change-3",
+          strategy: "client_wins",
+          resolvedBy: "user-1",
+          note: "Use local edit",
+        }),
+      ),
+    ).resolves.toMatchObject({
+      conflictId: "conflict-change-3",
+      strategy: "client_wins",
+      status: "resolved",
+      resolvedTask: {
+        id: "task-1",
+        title: "Client chosen edit",
+        priority: 3,
+        version: 3,
+      },
+      serverCursor: "cursor-3",
+    });
+  });
 });
 
 function push(workspaceId: string, changes: LocalChangeDto[]) {

@@ -279,6 +279,32 @@ export function createInMemorySyncStore(): SyncStore {
         };
       }
 
+      if (request.strategy === "client_wins") {
+        const existing = conflict.serverTask ?? workspace.tasks.get(conflict.taskId);
+        if (!existing) {
+          throw new Error("Task not found");
+        }
+        const version = workspace.version + 1;
+        const task = applyClientConflictPayload({
+          workspaceId,
+          taskId: conflict.taskId,
+          payload: conflict.clientPayload,
+          existing,
+          version,
+        });
+
+        workspace.version = version;
+        workspace.tasks.set(conflict.taskId, task);
+        workspace.taskVersions.set(conflict.taskId, version);
+        workspace.appliedChangeIds.add(conflict.changeId);
+        workspace.conflicts.delete(request.conflictId);
+        return {
+          status: "resolved",
+          strategy: request.strategy,
+          resolvedTask: task,
+        };
+      }
+
       return {
         status: "pending_manual",
         strategy: request.strategy,
@@ -454,6 +480,45 @@ function readBaseVersion(payload: unknown) {
   if (!payload || typeof payload !== "object") return null;
   const value = (payload as { baseVersion?: unknown }).baseVersion;
   return typeof value === "number" ? value : null;
+}
+
+function applyClientConflictPayload(input: {
+  workspaceId: string;
+  taskId: string;
+  payload: unknown;
+  existing: TaskDto;
+  version: number;
+}) {
+  if (!input.payload || typeof input.payload !== "object") {
+    throw new Error("Task conflict payload must be an object");
+  }
+
+  if ("patch" in input.payload) {
+    const payload = normalizeTaskUpdatePayload(input.payload, input.taskId);
+    return {
+      ...input.existing,
+      ...payload.patch,
+      id: input.taskId,
+      workspaceId: input.workspaceId,
+      updatedAt: payload.updatedAt,
+      version: input.version,
+    };
+  }
+
+  if ("status" in input.payload) {
+    const payload = normalizeTaskStatusPayload(input.payload, input.taskId);
+    return {
+      ...input.existing,
+      id: input.taskId,
+      workspaceId: input.workspaceId,
+      status: payload.status,
+      completedAt: payload.completedAt,
+      updatedAt: payload.updatedAt,
+      version: input.version,
+    };
+  }
+
+  throw new Error("Unsupported conflict payload");
 }
 
 function normalizeTaskPatch(patch: TaskUpdatePayload["patch"]) {
