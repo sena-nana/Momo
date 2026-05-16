@@ -633,6 +633,49 @@ describe("desktop MVP pages", () => {
     expect(await screen.findByText("Error: transport unavailable")).toBeInTheDocument();
   });
 
+  it("refreshes sync state after sync runner errors", async () => {
+    const repository = fakeRepository();
+    vi.mocked(repository.getSyncState)
+      .mockResolvedValueOnce({
+        serverCursor: "cursor-before",
+        lastSyncedAt: "2026-05-16T11:59:00.000Z",
+        lastError: null,
+        updatedAt: "2026-05-16T11:59:00.000Z",
+      })
+      .mockResolvedValueOnce({
+        serverCursor: null,
+        lastSyncedAt: null,
+        lastError: "HTTP-like sync transport failed",
+        updatedAt: "2026-05-16T12:00:00.000Z",
+      });
+    const runnerResult: SyncRunnerRunOnceResult = {
+      ok: false,
+      error: "HTTP-like sync transport failed",
+      result: null,
+    };
+
+    renderWithRepository(
+      <Settings onRunLocalSyncSimulation={vi.fn().mockResolvedValue(runnerResult)} />,
+      repository,
+    );
+
+    expect(await screen.findByText("cursor-before")).toBeInTheDocument();
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Run local sync simulation" }),
+    );
+
+    expect(
+      await screen.findByText("Error: HTTP-like sync transport failed"),
+    ).toBeInTheDocument();
+    const serverCursorRow = screen.getByText("Server cursor").closest("li");
+    const lastErrorRow = screen.getByText("Last error").closest("li");
+    expect(repository.getSyncState).toHaveBeenCalledTimes(2);
+    expect(within(serverCursorRow as HTMLElement).getByText("none")).toBeInTheDocument();
+    expect(
+      within(lastErrorRow as HTMLElement).getByText("HTTP-like sync transport failed"),
+    ).toBeInTheDocument();
+  });
+
   it("shows the local sync simulation entrypoint on the default settings route", async () => {
     const repository = fakeRepository();
 

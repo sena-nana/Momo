@@ -72,6 +72,7 @@ export default function Settings({
         } else {
           setSimulationResult(null);
           setSimulationError(result.error);
+          await load();
         }
         return;
       }

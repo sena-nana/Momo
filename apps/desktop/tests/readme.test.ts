@@ -56,6 +56,7 @@ describe("desktop README", () => {
     expect(readme).toContain("confirm `Pull applied`");
     expect(readme).toContain("confirm `Sync state`");
     expect(readme).toContain("refreshes `Sync state`");
+    expect(readme).toContain("sync errors refresh `Sync state`");
     expect(readme).toContain("Vite smoke only verifies the route, button, and error handling");
     expect(readme).toContain("Full SQLite success flow requires `npm run tauri dev`");
     expect(readme).toContain("no real network");
