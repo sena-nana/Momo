@@ -17,6 +17,7 @@ describe("desktop README", () => {
     expect(readme).toContain("summarizeDeltaPushResponse");
     expect(readme).toContain("summarizePendingConflicts");
     expect(readme).toContain("Sync conflicts");
+    expect(readme).toContain("Sync status");
     expect(readme).toContain("npm run verify");
   });
 });

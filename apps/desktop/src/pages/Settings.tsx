@@ -2,13 +2,17 @@ import { useEffect, useState } from "react";
 import { Database, Loader2, RefreshCw } from "lucide-react";
 import { useTaskRepository } from "../data/TaskRepositoryContext";
 import type { DatabaseStats } from "../data/taskRepository";
-import type { PendingConflictSummary } from "../sync/syncClient";
+import type { PendingConflictSummary, SyncRunSummary } from "../sync/syncClient";
 
 interface SettingsProps {
   pendingConflicts?: PendingConflictSummary[];
+  syncSummary?: SyncRunSummary | null;
 }
 
-export default function Settings({ pendingConflicts = [] }: SettingsProps) {
+export default function Settings({
+  pendingConflicts = [],
+  syncSummary = null,
+}: SettingsProps) {
   const repository = useTaskRepository();
   const [stats, setStats] = useState<DatabaseStats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -95,6 +99,22 @@ export default function Settings({ pendingConflicts = [] }: SettingsProps) {
                 <p>{conflict.clientPayloadSummary}</p>
               </li>
             ))}
+          </ul>
+        </div>
+      )}
+
+      {syncSummary && (
+        <div className="card">
+          <div className="section-title">
+            <h2>Sync status</h2>
+            <span className="pill">{syncSummary.status}</span>
+          </div>
+          <p className="empty-text">{syncSummary.message}</p>
+          <ul className="kv">
+            <li><span>Accepted</span><b>{syncSummary.acceptedCount}</b></li>
+            <li><span>Rejected</span><b>{syncSummary.rejectedCount}</b></li>
+            <li><span>Conflicts</span><b>{syncSummary.conflictCount}</b></li>
+            <li><span>Cursor</span><b>{syncSummary.serverCursor}</b></li>
           </ul>
         </div>
       )}

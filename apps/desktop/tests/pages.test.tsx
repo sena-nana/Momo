@@ -7,7 +7,7 @@ import type {
   TaskRepository,
 } from "../src/data/taskRepository";
 import type { CreateTaskInput, Task, TodayTaskGroups } from "../src/domain/tasks";
-import type { PendingConflictSummary } from "../src/sync/syncClient";
+import type { PendingConflictSummary, SyncRunSummary } from "../src/sync/syncClient";
 import Today from "../src/pages/Today";
 import Inbox from "../src/pages/Inbox";
 import Calendar from "../src/pages/Calendar";
@@ -308,6 +308,34 @@ describe("desktop MVP pages", () => {
     expect(
       within(conflictRow as HTMLElement).getByText('patch: {"title":"Local title"}'),
     ).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /resolve/i })).not.toBeInTheDocument();
+  });
+
+  it("shows a read-only sync run summary in settings", async () => {
+    const repository = fakeRepository();
+    const syncSummary: SyncRunSummary = {
+      status: "has-rejections",
+      message: "1 local change needs retry or repair",
+      acceptedCount: 2,
+      rejectedCount: 1,
+      conflictCount: 0,
+      serverCursor: "cursor-4",
+    };
+
+    renderWithRepository(<Settings syncSummary={syncSummary} />, repository);
+
+    expect(await screen.findByText("Sync status")).toBeInTheDocument();
+    expect(screen.getByText("1 local change needs retry or repair")).toBeInTheDocument();
+    expect(screen.getByText("has-rejections")).toBeInTheDocument();
+    expect(screen.getByText("cursor-4")).toBeInTheDocument();
+
+    const acceptedRow = screen.getByText("Accepted").closest("li");
+    const rejectedRow = screen.getByText("Rejected").closest("li");
+    const conflictRow = screen.getByText("Conflicts").closest("li");
+    expect(within(acceptedRow as HTMLElement).getByText("2")).toBeInTheDocument();
+    expect(within(rejectedRow as HTMLElement).getByText("1")).toBeInTheDocument();
+    expect(within(conflictRow as HTMLElement).getByText("0")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /retry/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /resolve/i })).not.toBeInTheDocument();
   });
 
