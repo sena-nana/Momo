@@ -30,6 +30,7 @@ import {
 import { createHttpSyncTransport } from "../src/sync/httpSyncTransport";
 import { createHttpLikeSyncTransport } from "../src/sync/httpLikeSyncTransport";
 import { createLocalSyncRunner } from "../src/sync/localSyncRunner";
+import { createRemoteSyncConfig } from "../src/sync/remoteSyncConfig";
 
 describe("desktop sync client adapter", () => {
   it("exports the stable sync run status list", () => {
@@ -320,6 +321,29 @@ describe("desktop sync client adapter", () => {
       }),
     ).rejects.toThrow("HTTP sync baseUrl is not configured");
     expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("builds disabled remote sync config when no base URL is configured", () => {
+    expect(createRemoteSyncConfig({})).toEqual({
+      enabled: false,
+      reason: "Remote sync base URL is not configured",
+    });
+  });
+
+  it("builds remote sync config with an authorization headers provider", async () => {
+    const config = createRemoteSyncConfig({
+      VITE_MOMO_SYNC_BASE_URL: " https://api.example.test/momo ",
+      VITE_MOMO_SYNC_TOKEN: " local-token ",
+    });
+
+    expect(config).toMatchObject({
+      enabled: true,
+      baseUrl: "https://api.example.test/momo",
+    });
+    expect(config.enabled).toBe(true);
+    await expect(config.headers()).resolves.toEqual({
+      authorization: "Bearer local-token",
+    });
   });
 
   it("surfaces injected HTTP fetch transport errors with method path and status", async () => {

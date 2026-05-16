@@ -32,6 +32,9 @@ describe("desktop README", () => {
     expect(readme).toContain("injected `fetch`");
     expect(readme).toContain("headers provider");
     expect(readme).toContain("baseUrl is not configured");
+    expect(readme).toContain("createRemoteSyncConfig");
+    expect(readme).toContain("VITE_MOMO_SYNC_BASE_URL");
+    expect(readme).toContain("VITE_MOMO_SYNC_TOKEN");
     expect(readme).toContain("route/status");
     expect(readme).toContain("runOnce");
     expect(readme).toContain("runs delta pull after delta push");
