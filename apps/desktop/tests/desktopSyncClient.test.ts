@@ -113,12 +113,6 @@ describe("desktop sync client adapter", () => {
         },
       ]),
       markChangeSynced: vi.fn().mockResolvedValue(undefined),
-      saveSyncState: vi.fn().mockResolvedValue({
-        serverCursor: "cursor-7",
-        lastSyncedAt: "2026-05-16T12:01:00.000Z",
-        lastError: null,
-        updatedAt: "2026-05-16T12:01:00.000Z",
-      }),
     } as unknown as TaskRepository;
     const syncApi = createSyncApi({
       store: createInMemorySyncStore(),
@@ -174,12 +168,6 @@ describe("desktop sync client adapter", () => {
         },
       ]),
       markChangeSynced: vi.fn().mockResolvedValue(undefined),
-      saveSyncState: vi.fn().mockResolvedValue({
-        serverCursor: "cursor-7",
-        lastSyncedAt: "2026-05-16T12:01:00.000Z",
-        lastError: null,
-        updatedAt: "2026-05-16T12:01:00.000Z",
-      }),
     } as unknown as TaskRepository;
     const syncApi = createSyncApi({
       store: createInMemorySyncStore(),
@@ -273,8 +261,16 @@ describe("desktop sync client adapter", () => {
         },
       ]),
       markChangeSynced: vi.fn().mockResolvedValue(undefined),
+      getSyncState: vi.fn().mockResolvedValue({
+        serverCursor: "cursor-2",
+        lastSyncedAt: "2026-05-16T11:59:00.000Z",
+        lastError: null,
+        updatedAt: "2026-05-16T11:59:00.000Z",
+      }),
+      applyRemoteTask: vi.fn().mockResolvedValue(undefined),
+      deleteRemoteTask: vi.fn().mockResolvedValue(undefined),
       saveSyncState: vi.fn().mockResolvedValue({
-        serverCursor: "cursor-7",
+        serverCursor: "cursor-8",
         lastSyncedAt: "2026-05-16T12:01:00.000Z",
         lastError: null,
         updatedAt: "2026-05-16T12:01:00.000Z",
@@ -295,6 +291,29 @@ describe("desktop sync client adapter", () => {
         serverCursor: "cursor-7",
         serverTime: "2026-05-16T12:02:00.000Z",
       }),
+      deltaPull: vi.fn().mockResolvedValue({
+        contractVersion: SYNC_CONTRACT_VERSION,
+        tasks: [
+          {
+            id: "task-remote",
+            workspaceId: "local",
+            title: "Pulled task",
+            notes: null,
+            status: "active",
+            priority: 0,
+            dueAt: null,
+            estimateMin: null,
+            tags: [],
+            createdAt: "2026-05-16T10:00:00.000Z",
+            updatedAt: "2026-05-16T12:00:00.000Z",
+            completedAt: null,
+            version: 8,
+          },
+        ],
+        deletedTaskIds: ["task-removed"],
+        serverCursor: "cursor-8",
+        serverTime: "2026-05-16T12:02:30.000Z",
+      } satisfies DeltaPullResponse),
     };
 
     const runner = createSyncRunner({
@@ -324,6 +343,11 @@ describe("desktop sync client adapter", () => {
         },
         pendingConflictCount: 0,
         pendingConflicts: [],
+        pull: {
+          appliedTaskCount: 1,
+          deletedTaskCount: 1,
+          serverCursor: "cursor-8",
+        },
       },
     });
     expect(repository.markChangeSynced).toHaveBeenCalledWith(
@@ -331,10 +355,20 @@ describe("desktop sync client adapter", () => {
       new Date("2026-05-16T12:01:00.000Z"),
     );
     expect(repository.saveSyncState).toHaveBeenCalledWith({
-      serverCursor: "cursor-7",
+      serverCursor: "cursor-8",
       lastSyncedAt: "2026-05-16T12:01:00.000Z",
       lastError: null,
     });
+    expect(transport.deltaPull).toHaveBeenCalledWith({
+      contractVersion: SYNC_CONTRACT_VERSION,
+      workspaceId: "local",
+      deviceId: "desktop-1",
+      sinceCursor: "cursor-2",
+    });
+    expect(repository.applyRemoteTask).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "task-remote", title: "Pulled task" }),
+    );
+    expect(repository.deleteRemoteTask).toHaveBeenCalledWith("task-removed");
     expect(transport.deltaPush).toHaveBeenCalledTimes(1);
     expect(transport.listConflicts).toHaveBeenCalledTimes(1);
   });

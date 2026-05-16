@@ -60,6 +60,7 @@ npm install
 - `runLocalSyncSimulation()` 可用注入的内存 sync API 串起 pending changes、delta push、accepted 标记与 pending conflict 摘要，用于本地端到端演练；返回值包含 `pendingConflictCount`。
 - `createLocalSyncRunner()` 使用 in-memory transport 包装本地 `createSyncApi()`，并已接到 default Settings route，作为当前 local simulation entrypoint 让 `/settings` 中的演示按钮在实际桌面壳里可见。
 - `createSyncRunner()` 是桌面端 sync runner boundary；`runOnce()` 接收注入的 `transport`、workspace/device 与 clock，负责编排一次同步并把 transport 错误归一成可展示结果。
+- 当 transport 提供 `deltaPull()` 时，`runOnce()` runs delta pull after delta push：读取 `sync_state.serverCursor` 作为 `sinceCursor`，拉取并应用远端变化。
 - runner 成功时会通过 `saveSyncState()` 保存 server cursor / last synced 并 clears last error；失败时会 records last error。
 - rejected changes 与 conflicts 目前只作为摘要返回给调用方，不会自动重试、覆盖或解决冲突。
 - `SYNC_RUN_STATUSES` 固定导出同步运行状态列表；`summarizeDeltaPushResponse()` 会把一次 delta push 响应归纳成 `all-synced`、`has-rejections` 或 `has-conflicts` 状态文案；无变更时显示 `Already synced`。
@@ -87,7 +88,7 @@ npm install
 
 - 已建立 `delta pull application boundary`，可以把服务端返回的 delta pull 结果 apply pulled tasks into local SQLite。
 - 该边界应复用 `sync_state.serverCursor` 作为 pull 起点，并在应用完成后写回新 cursor。
-- 下一步建议把 runner 串上 delta pull 请求/应用闭环；real HTTP transport remains later，当前仍先保持 in-memory transport 和 HTTP-like router 语义验证。
+- 下一步建议把 Settings 的展示摘要扩展到 pull 结果；real HTTP transport remains later，当前仍先保持 in-memory transport 和 HTTP-like router 语义验证。
 
 ## 当前限制
 

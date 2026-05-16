@@ -1,7 +1,9 @@
 import {
+  createDeltaPullRequest,
   createListTaskConflictsRequest,
   createDeltaPushRequest,
   type DeltaPullResponse,
+  type DeltaPullRequest,
   type DeltaPushResponse,
   type DeltaPushRequest,
   type ListTaskConflictsResponse,
@@ -37,6 +39,7 @@ export async function buildDeltaPushFromPendingChanges({
 
 export interface LocalSyncSimulationApi {
   deltaPush(request: DeltaPushRequest): Promise<DeltaPushResponse>;
+  deltaPull?(request: DeltaPullRequest): Promise<DeltaPullResponse>;
   listConflicts(request: {
     contractVersion: 1;
     workspaceId: string;
@@ -55,6 +58,7 @@ export interface RunLocalSyncSimulationOptions {
 export interface LocalSyncSimulationResult {
   request: DeltaPushRequest;
   push: ApplyDeltaPushResult;
+  pull?: ApplyDeltaPullResult;
   pendingConflictCount: number;
   pendingConflicts: PendingConflictSummary[];
 }
@@ -64,7 +68,12 @@ export type SyncRunnerTransport = LocalSyncSimulationApi;
 export interface SyncRunnerOptions {
   repository: Pick<
     TaskRepository,
-    "listPendingChanges" | "markChangeSynced" | "saveSyncState"
+    | "listPendingChanges"
+    | "markChangeSynced"
+    | "getSyncState"
+    | "applyRemoteTask"
+    | "deleteRemoteTask"
+    | "saveSyncState"
   >;
   transport: SyncRunnerTransport;
   workspaceId: string;
@@ -105,11 +114,27 @@ export function createSyncRunner({
           deviceId,
           now: startedAt,
         });
-        await repository.saveSyncState({
-          serverCursor: result.push.serverCursor,
-          lastSyncedAt: startedAt.toISOString(),
-          lastError: null,
-        });
+        if (transport.deltaPull) {
+          const syncState = await repository.getSyncState();
+          const pullResponse = await transport.deltaPull(
+            createDeltaPullRequest({
+              workspaceId,
+              deviceId,
+              sinceCursor: syncState.serverCursor,
+            }),
+          );
+          result.pull = await applyDeltaPullResponse({
+            repository,
+            response: pullResponse,
+            syncedAt: startedAt,
+          });
+        } else {
+          await repository.saveSyncState({
+            serverCursor: result.push.serverCursor,
+            lastSyncedAt: startedAt.toISOString(),
+            lastError: null,
+          });
+        }
         return {
           ok: true,
           result,

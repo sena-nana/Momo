@@ -27,6 +27,8 @@ describe("desktop README", () => {
     expect(readme).toContain("in-memory transport");
     expect(readme).toContain("createSyncRunner");
     expect(readme).toContain("runOnce");
+    expect(readme).toContain("runs delta pull after delta push");
+    expect(readme).toContain("sinceCursor");
     expect(readme).toContain("transport");
     expect(readme).toContain("clears last error");
     expect(readme).toContain("records last error");
