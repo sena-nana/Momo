@@ -18,6 +18,9 @@ describe("desktop README", () => {
     expect(readme).toContain("buildDeltaPushFromPendingChanges");
     expect(readme).toContain("applyDeltaPushResponse");
     expect(readme).toContain("runLocalSyncSimulation");
+    expect(readme).toContain("createLocalSyncRunner");
+    expect(readme).toContain("default Settings route");
+    expect(readme).toContain("in-memory transport");
     expect(readme).toContain("createSyncRunner");
     expect(readme).toContain("runOnce");
     expect(readme).toContain("transport");

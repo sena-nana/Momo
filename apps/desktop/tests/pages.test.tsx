@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 import { TaskRepositoryProvider } from "../src/data/TaskRepositoryContext";
 import type {
@@ -19,6 +20,7 @@ import Inbox from "../src/pages/Inbox";
 import Calendar from "../src/pages/Calendar";
 import Settings from "../src/pages/Settings";
 import Widget from "../src/pages/Widget";
+import App from "../src/App";
 
 describe("desktop MVP pages", () => {
   it("shows today's groups and quick-adds a task for today", async () => {
@@ -486,6 +488,22 @@ describe("desktop MVP pages", () => {
     );
 
     expect(await screen.findByText("Error: transport unavailable")).toBeInTheDocument();
+  });
+
+  it("shows the local sync simulation entrypoint on the default settings route", async () => {
+    const repository = fakeRepository();
+
+    render(
+      <TaskRepositoryProvider repository={repository}>
+        <MemoryRouter initialEntries={["/settings"]}>
+          <App />
+        </MemoryRouter>
+      </TaskRepositoryProvider>,
+    );
+
+    expect(
+      await screen.findByRole("button", { name: "Run local sync simulation" }),
+    ).toBeInTheDocument();
   });
 
   it("recovers settings database status errors with retry", async () => {
