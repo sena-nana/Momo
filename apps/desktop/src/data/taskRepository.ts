@@ -63,6 +63,7 @@ export interface DatabaseStats {
   totalTasks: number;
   activeTasks: number;
   completedTasks: number;
+  pendingLocalChanges: number;
   databasePath: string;
 }
 
@@ -305,18 +306,30 @@ export function createTaskRepository(
         total_tasks: number;
         active_tasks: number;
         completed_tasks: number;
+        pending_local_changes: number;
       }>(
         `SELECT
           COUNT(*) AS total_tasks,
           SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) AS active_tasks,
-          SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) AS completed_tasks
+          SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) AS completed_tasks,
+          (
+            SELECT COUNT(*)
+            FROM local_changes
+            WHERE synced_at IS NULL
+          ) AS pending_local_changes
          FROM tasks`,
       );
-      const stats = rows[0] ?? { total_tasks: 0, active_tasks: 0, completed_tasks: 0 };
+      const stats = rows[0] ?? {
+        total_tasks: 0,
+        active_tasks: 0,
+        completed_tasks: 0,
+        pending_local_changes: 0,
+      };
       return {
         totalTasks: Number(stats.total_tasks ?? 0),
         activeTasks: Number(stats.active_tasks ?? 0),
         completedTasks: Number(stats.completed_tasks ?? 0),
+        pendingLocalChanges: Number(stats.pending_local_changes ?? 0),
         databasePath: MOMO_DATABASE_PATH,
       };
     },

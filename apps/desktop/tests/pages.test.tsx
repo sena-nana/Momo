@@ -268,6 +268,7 @@ describe("desktop MVP pages", () => {
         totalTasks: 4,
         activeTasks: 2,
         completedTasks: 1,
+        pendingLocalChanges: 3,
       },
     });
 
@@ -277,6 +278,9 @@ describe("desktop MVP pages", () => {
     expect(screen.getByText("4")).toBeInTheDocument();
     expect(screen.getByText("2")).toBeInTheDocument();
     expect(screen.getByText("1")).toBeInTheDocument();
+    const pendingRow = screen.getByText("Pending sync").closest("li");
+    expect(pendingRow).not.toBeNull();
+    expect(within(pendingRow as HTMLElement).getByText("3")).toBeInTheDocument();
   });
 
   it("recovers settings database status errors with retry", async () => {
@@ -288,6 +292,7 @@ describe("desktop MVP pages", () => {
         totalTasks: 5,
         activeTasks: 3,
         completedTasks: 2,
+        pendingLocalChanges: 1,
       });
 
     renderWithRepository(<Settings />, repository);
@@ -338,6 +343,7 @@ function fakeRepository(overrides: {
     totalTasks: 0,
     activeTasks: 0,
     completedTasks: 0,
+    pendingLocalChanges: 0,
   };
 
   return {

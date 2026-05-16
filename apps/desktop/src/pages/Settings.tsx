@@ -67,6 +67,7 @@ export default function Settings() {
             <li><span>Total tasks</span><b>{stats.totalTasks}</b></li>
             <li><span>Active</span><b>{stats.activeTasks}</b></li>
             <li><span>Completed</span><b>{stats.completedTasks}</b></li>
+            <li><span>Pending sync</span><b>{stats.pendingLocalChanges}</b></li>
           </ul>
         )}
       </div>

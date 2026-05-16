@@ -176,6 +176,28 @@ describe("TaskRepository", () => {
       "change-1",
     ]);
   });
+
+  it("loads database stats with pending local changes", async () => {
+    const db = new RecordingDatabase({
+      stats: [
+        {
+          total_tasks: 4,
+          active_tasks: 2,
+          completed_tasks: 1,
+          pending_local_changes: 3,
+        },
+      ],
+    });
+    const repository = createTaskRepository(() => Promise.resolve(db));
+
+    await expect(repository.getStats()).resolves.toEqual({
+      databasePath: "sqlite:momo.db",
+      totalTasks: 4,
+      activeTasks: 2,
+      completedTasks: 1,
+      pendingLocalChanges: 3,
+    });
+  });
 });
 
 function task(overrides: Partial<ReturnType<typeof baseTask>>) {
@@ -201,7 +223,15 @@ function baseTask() {
 class RecordingDatabase implements SqlDatabase {
   calls: Array<{ sql: string; params?: unknown[] }> = [];
 
-  constructor(private rows: { localChanges?: LocalChangeRow[] } = {}) {}
+  constructor(private rows: {
+    localChanges?: LocalChangeRow[];
+    stats?: Array<{
+      total_tasks: number;
+      active_tasks: number;
+      completed_tasks: number;
+      pending_local_changes: number;
+    }>;
+  } = {}) {}
 
   get executedSql() {
     return this.calls.map((call) => call.sql);
@@ -213,6 +243,9 @@ class RecordingDatabase implements SqlDatabase {
   }
 
   async select<T>(sql: string) {
+    if (sql.includes("COUNT(*) AS total_tasks")) {
+      return (this.rows.stats ?? []) as T[];
+    }
     if (sql.includes("FROM local_changes")) {
       return (this.rows.localChanges ?? []) as T[];
     }
