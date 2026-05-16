@@ -63,6 +63,16 @@ body { background: var(--bg); color: var(--text); }
   background: var(--accent);
   color: var(--accent-text);
 }
+.shell__widget-button {
+  width: 100%;
+  margin-bottom: 8px;
+}
+.shell__error {
+  margin: 0 0 8px;
+  color: var(--err);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
 
 .shell__main { overflow: auto; padding: 28px 32px; }
 
@@ -295,3 +305,88 @@ button:disabled {
 .auth__hint { color: var(--text-muted); margin: 0; font-size: 13px; }
 .auth__label { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--text-muted); }
 .auth__label input { color: var(--text); }
+
+.widget {
+  min-height: 100%;
+  padding: 18px;
+  background: rgba(247, 247, 248, 0.86);
+  color: var(--text);
+  backdrop-filter: blur(18px);
+}
+.widget__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+.widget__header h1 {
+  margin: 0;
+  text-align: left;
+  font-size: 20px;
+}
+.widget__header p {
+  margin: 2px 0 0;
+  color: var(--text-muted);
+}
+.widget__header span {
+  display: inline-grid;
+  place-items: center;
+  min-width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-text);
+  font-weight: 700;
+}
+.widget__state {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-muted);
+}
+.widget__state--error {
+  color: var(--err);
+}
+.widget-section {
+  border-top: 1px solid var(--border);
+  padding: 12px 0;
+}
+.widget-section__title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-muted);
+}
+.widget-section__title h2 {
+  margin: 0;
+  font-size: 12px;
+  text-transform: uppercase;
+}
+.widget-section ul {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0 0;
+}
+.widget-section li {
+  padding: 7px 0;
+  border-bottom: 1px dashed var(--border);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.widget-section li:last-child {
+  border-bottom: 0;
+}
+.widget-section li.is-urgent {
+  color: var(--err);
+}
+.widget__empty {
+  margin: 8px 0 0;
+  color: var(--text-muted);
+}
+
+@media (prefers-color-scheme: dark) {
+  .widget {
+    background: rgba(28, 28, 30, 0.86);
+  }
+}

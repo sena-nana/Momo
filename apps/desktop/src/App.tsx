@@ -5,11 +5,13 @@ import Today from "./pages/Today";
 import Inbox from "./pages/Inbox";
 import Calendar from "./pages/Calendar";
 import Settings from "./pages/Settings";
+import Widget from "./pages/Widget";
 
 export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
+      <Route path="/widget" element={<Widget />} />
       <Route element={<AppShell />}>
         <Route path="/today" element={<Today />} />
         <Route path="/inbox" element={<Inbox />} />

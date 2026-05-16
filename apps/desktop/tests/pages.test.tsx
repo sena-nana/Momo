@@ -11,6 +11,7 @@ import Today from "../src/pages/Today";
 import Inbox from "../src/pages/Inbox";
 import Calendar from "../src/pages/Calendar";
 import Settings from "../src/pages/Settings";
+import Widget from "../src/pages/Widget";
 
 describe("desktop MVP pages", () => {
   it("shows today's groups and quick-adds a task for today", async () => {
@@ -101,6 +102,22 @@ describe("desktop MVP pages", () => {
     expect(screen.getByText("4")).toBeInTheDocument();
     expect(screen.getByText("2")).toBeInTheDocument();
     expect(screen.getByText("1")).toBeInTheDocument();
+  });
+
+  it("shows a compact widget view of today's tasks", async () => {
+    const repository = fakeRepository({
+      today: {
+        overdue: [task({ id: "late", title: "Late invoice" })],
+        dueToday: [task({ id: "focus", title: "Focus block" })],
+        completedToday: [],
+      },
+    });
+
+    renderWithRepository(<Widget />, repository);
+
+    expect(await screen.findByText("Momo Widget")).toBeInTheDocument();
+    expect(screen.getByText("Late invoice")).toBeInTheDocument();
+    expect(screen.getByText("Focus block")).toBeInTheDocument();
   });
 });
 
