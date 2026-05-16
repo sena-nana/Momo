@@ -6,13 +6,23 @@ import {
 } from "../../../packages/contracts/src";
 import type { TaskRepository } from "../src/data/taskRepository";
 import {
+  SYNC_RUN_STATUSES,
   applyDeltaPushResponse,
   buildDeltaPushFromPendingChanges,
   summarizeDeltaPushResponse,
   summarizePendingConflicts,
+  type ApplyDeltaPushResult,
 } from "../src/sync/syncClient";
 
 describe("desktop sync client adapter", () => {
+  it("exports the stable sync run status list", () => {
+    expect(SYNC_RUN_STATUSES).toEqual([
+      "all-synced",
+      "has-rejections",
+      "has-conflicts",
+    ]);
+  });
+
   it("builds a delta push request from pending local changes", async () => {
     const repository = {
       listPendingChanges: vi.fn().mockResolvedValue([
@@ -124,6 +134,42 @@ describe("desktop sync client adapter", () => {
       "change-2",
       new Date("2026-05-16T12:01:00.000Z"),
     );
+  });
+
+  it("exposes the apply delta push result shape for callers", async () => {
+    const repository = {
+      markChangeSynced: vi.fn().mockResolvedValue(undefined),
+    } as unknown as TaskRepository;
+    const response: DeltaPushResponse = {
+      contractVersion: SYNC_CONTRACT_VERSION,
+      acceptedChangeIds: [],
+      rejectedChanges: [],
+      conflicts: [],
+      serverCursor: "cursor-9",
+      serverTime: "2026-05-16T12:00:00.000Z",
+    };
+
+    const result: ApplyDeltaPushResult = await applyDeltaPushResponse({
+      repository,
+      response,
+      syncedAt: new Date("2026-05-16T12:01:00.000Z"),
+    });
+
+    expect(result).toEqual({
+      acceptedChangeIds: [],
+      rejectedChanges: [],
+      conflicts: [],
+      serverCursor: "cursor-9",
+      summary: {
+        status: "all-synced",
+        message: "Already synced",
+        acceptedCount: 0,
+        rejectedCount: 0,
+        conflictCount: 0,
+        serverCursor: "cursor-9",
+      },
+    });
+    expect(repository.markChangeSynced).not.toHaveBeenCalled();
   });
 
   it("summarizes a fully accepted sync run", () => {

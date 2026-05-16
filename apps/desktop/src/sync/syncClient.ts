@@ -35,11 +35,19 @@ export interface ApplyDeltaPushResponseOptions {
   syncedAt: Date;
 }
 
+export interface ApplyDeltaPushResult {
+  acceptedChangeIds: string[];
+  rejectedChanges: DeltaPushResponse["rejectedChanges"];
+  conflicts: TaskConflictDto[];
+  serverCursor: string;
+  summary: SyncRunSummary;
+}
+
 export async function applyDeltaPushResponse({
   repository,
   response,
   syncedAt,
-}: ApplyDeltaPushResponseOptions) {
+}: ApplyDeltaPushResponseOptions): Promise<ApplyDeltaPushResult> {
   for (const changeId of response.acceptedChangeIds) {
     await repository.markChangeSynced(changeId, syncedAt);
   }
@@ -53,7 +61,13 @@ export async function applyDeltaPushResponse({
   };
 }
 
-export type SyncRunStatus = "all-synced" | "has-rejections" | "has-conflicts";
+export const SYNC_RUN_STATUSES = [
+  "all-synced",
+  "has-rejections",
+  "has-conflicts",
+] as const;
+
+export type SyncRunStatus = typeof SYNC_RUN_STATUSES[number];
 
 export interface SyncRunSummary {
   status: SyncRunStatus;
