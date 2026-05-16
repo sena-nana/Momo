@@ -11,6 +11,7 @@ export default function Today() {
     completedToday: [],
   });
   const [title, setTitle] = useState("");
+  const [destination, setDestination] = useState<"today" | "inbox">("today");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -39,7 +40,7 @@ export default function Today() {
     try {
       await repository.createTask({
         title,
-        dueAt: defaultTodayDueAt(),
+        dueAt: destination === "today" ? defaultTodayDueAt() : null,
       });
       setTitle("");
       await load();
@@ -68,9 +69,22 @@ export default function Today() {
             onChange={(event) => setTitle(event.target.value)}
             placeholder="Add a task for today"
           />
+          <label className="sr-only" htmlFor="task-destination">
+            Task destination
+          </label>
+          <select
+            id="task-destination"
+            value={destination}
+            onChange={(event) =>
+              setDestination(event.target.value === "inbox" ? "inbox" : "today")
+            }
+          >
+            <option value="today">Today</option>
+            <option value="inbox">Inbox</option>
+          </select>
           <button type="submit" disabled={saving || !title.trim()}>
             <Plus size={16} aria-hidden="true" />
-            Add for today
+            {destination === "today" ? "Add for today" : "Add task"}
           </button>
         </div>
       </form>

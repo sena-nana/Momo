@@ -1,13 +1,23 @@
 import { FormEvent, useEffect, useState } from "react";
 import { Check, Loader2, Pencil, Save, Trash2, X } from "lucide-react";
 import { useTaskRepository } from "../data/TaskRepositoryContext";
-import type { Task } from "../domain/tasks";
+import type { Task, TaskPriority } from "../domain/tasks";
+
+interface DraftTask {
+  title: string;
+  notes: string;
+  priority: TaskPriority;
+}
 
 export default function Inbox() {
   const repository = useTaskRepository();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [editing, setEditing] = useState<string | null>(null);
-  const [draft, setDraft] = useState("");
+  const [draft, setDraft] = useState<DraftTask>({
+    title: "",
+    notes: "",
+    priority: 0,
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -39,13 +49,21 @@ export default function Inbox() {
 
   function beginEdit(task: Task) {
     setEditing(task.id);
-    setDraft(task.title);
+    setDraft({
+      title: task.title,
+      notes: task.notes ?? "",
+      priority: task.priority,
+    });
   }
 
   async function saveEdit(event: FormEvent, task: Task) {
     event.preventDefault();
-    if (!draft.trim()) return;
-    await repository.updateTask(task.id, { title: draft });
+    if (!draft.title.trim()) return;
+    await repository.updateTask(task.id, {
+      title: draft.title,
+      notes: draft.notes,
+      priority: draft.priority,
+    });
     setEditing(null);
     await load();
   }
@@ -76,10 +94,35 @@ export default function Inbox() {
               {editing === task.id ? (
                 <form className="edit-row" onSubmit={(event) => saveEdit(event, task)}>
                   <input
-                    aria-label={`Edit ${task.title}`}
-                    value={draft}
-                    onChange={(event) => setDraft(event.target.value)}
+                    aria-label={`Edit ${task.title} title`}
+                    value={draft.title}
+                    onChange={(event) =>
+                      setDraft((current) => ({ ...current, title: event.target.value }))
+                    }
                   />
+                  <input
+                    aria-label={`Edit ${task.title} notes`}
+                    value={draft.notes}
+                    onChange={(event) =>
+                      setDraft((current) => ({ ...current, notes: event.target.value }))
+                    }
+                    placeholder="Notes"
+                  />
+                  <select
+                    aria-label={`Edit ${task.title} priority`}
+                    value={draft.priority}
+                    onChange={(event) =>
+                      setDraft((current) => ({
+                        ...current,
+                        priority: Number(event.target.value) as TaskPriority,
+                      }))
+                    }
+                  >
+                    <option value={0}>P0</option>
+                    <option value={1}>P1</option>
+                    <option value={2}>P2</option>
+                    <option value={3}>P3</option>
+                  </select>
                   <button type="submit" aria-label={`Save ${task.title}`}>
                     <Save size={16} aria-hidden="true" />
                   </button>
@@ -93,7 +136,13 @@ export default function Inbox() {
                 </form>
               ) : (
                 <>
-                  <span className="task-title">{task.title}</span>
+                  <div className="task-copy">
+                    <span className="task-title">{task.title}</span>
+                    {task.notes && <span className="task-meta">{task.notes}</span>}
+                    {task.priority > 0 && (
+                      <span className="task-badge">P{task.priority}</span>
+                    )}
+                  </div>
                   <div className="task-actions">
                     <button
                       type="button"

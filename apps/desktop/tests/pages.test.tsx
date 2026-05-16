@@ -42,6 +42,24 @@ describe("desktop MVP pages", () => {
     );
   });
 
+  it("quick-adds an undated task into inbox", async () => {
+    const repository = fakeRepository();
+
+    renderWithRepository(<Today />, repository);
+
+    await screen.findByText("Due today");
+    await userEvent.selectOptions(screen.getByLabelText("Task destination"), "inbox");
+    await userEvent.type(screen.getByLabelText("Quick add task"), "Capture idea");
+    await userEvent.click(screen.getByRole("button", { name: "Add task" }));
+
+    expect(repository.createTask).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: "Capture idea",
+        dueAt: null,
+      }),
+    );
+  });
+
   it("shows inbox tasks and supports complete/delete actions", async () => {
     const repository = fakeRepository({
       inbox: [task({ id: "inbox-1", title: "Inbox task" })],
@@ -66,6 +84,36 @@ describe("desktop MVP pages", () => {
 
     expect(repository.setStatus).toHaveBeenCalledWith("inbox-1", "completed");
     expect(repository.deleteTask).toHaveBeenCalledWith("inbox-1");
+  });
+
+  it("edits inbox task title, notes, and priority", async () => {
+    const repository = fakeRepository({
+      inbox: [task({ id: "inbox-1", title: "Inbox task", notes: "old", priority: 0 })],
+    });
+
+    renderWithRepository(<Inbox />, repository);
+
+    const item = await screen.findByText("Inbox task");
+    const row = item.closest("li");
+    expect(row).not.toBeNull();
+
+    await userEvent.click(
+      within(row as HTMLElement).getByRole("button", {
+        name: "Edit Inbox task",
+      }),
+    );
+    await userEvent.clear(screen.getByLabelText("Edit Inbox task title"));
+    await userEvent.type(screen.getByLabelText("Edit Inbox task title"), "Updated task");
+    await userEvent.clear(screen.getByLabelText("Edit Inbox task notes"));
+    await userEvent.type(screen.getByLabelText("Edit Inbox task notes"), "Deeper detail");
+    await userEvent.selectOptions(screen.getByLabelText("Edit Inbox task priority"), "2");
+    await userEvent.click(screen.getByRole("button", { name: "Save Inbox task" }));
+
+    expect(repository.updateTask).toHaveBeenCalledWith("inbox-1", {
+      title: "Updated task",
+      notes: "Deeper detail",
+      priority: 2,
+    });
   });
 
   it("shows a read-only seven-day agenda", async () => {

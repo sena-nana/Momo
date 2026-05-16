@@ -104,7 +104,7 @@ body { background: var(--bg); color: var(--text); }
 
 .row { display: flex; gap: 8px; align-items: center; margin-top: 10px; }
 .row input { flex: 1; min-width: 0; }
-input, button {
+input, button, select {
   font: inherit;
   padding: 8px 12px;
   border-radius: 8px;
@@ -222,6 +222,21 @@ button:disabled {
   flex: 0 0 auto;
   gap: 6px;
 }
+.task-copy {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 3px;
+}
+.task-badge {
+  width: fit-content;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 1px 7px;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
 
 .icon-button {
   width: 34px;
@@ -235,7 +250,7 @@ button:disabled {
 
 .edit-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 38px 38px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 84px 38px 38px;
   width: 100%;
   gap: 8px;
 }
@@ -283,6 +298,7 @@ button:disabled {
   .shell__main { padding: 20px; }
   .task-grid { grid-template-columns: 1fr; }
   .timeline__item { grid-template-columns: 1fr; gap: 4px; }
+  .edit-row { grid-template-columns: 1fr; }
 }
 
 .auth {
