@@ -59,7 +59,10 @@ export interface LocalSyncSimulationResult {
 export type SyncRunnerTransport = LocalSyncSimulationApi;
 
 export interface SyncRunnerOptions {
-  repository: Pick<TaskRepository, "listPendingChanges" | "markChangeSynced">;
+  repository: Pick<
+    TaskRepository,
+    "listPendingChanges" | "markChangeSynced" | "saveSyncState"
+  >;
   transport: SyncRunnerTransport;
   workspaceId: string;
   deviceId: string;
@@ -90,21 +93,34 @@ export function createSyncRunner({
 }: SyncRunnerOptions): SyncRunner {
   return {
     async runOnce() {
+      const startedAt = now();
       try {
+        const result = await runLocalSyncSimulation({
+          repository,
+          syncApi: transport,
+          workspaceId,
+          deviceId,
+          now: startedAt,
+        });
+        await repository.saveSyncState({
+          serverCursor: result.push.serverCursor,
+          lastSyncedAt: startedAt.toISOString(),
+          lastError: null,
+        });
         return {
           ok: true,
-          result: await runLocalSyncSimulation({
-            repository,
-            syncApi: transport,
-            workspaceId,
-            deviceId,
-            now: now(),
-          }),
+          result,
         };
       } catch (e) {
+        const error = getErrorMessage(e);
+        await repository.saveSyncState({
+          serverCursor: null,
+          lastSyncedAt: null,
+          lastError: error,
+        });
         return {
           ok: false,
-          error: getErrorMessage(e),
+          error,
           result: null,
         };
       }

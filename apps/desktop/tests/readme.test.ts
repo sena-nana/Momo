@@ -21,6 +21,8 @@ describe("desktop README", () => {
     expect(readme).toContain("createSyncRunner");
     expect(readme).toContain("runOnce");
     expect(readme).toContain("transport");
+    expect(readme).toContain("clears last error");
+    expect(readme).toContain("records last error");
     expect(readme).toContain("pendingConflictCount");
     expect(readme).toContain("SYNC_RUN_STATUSES");
     expect(readme).toContain("summarizeDeltaPushResponse");

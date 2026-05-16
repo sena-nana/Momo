@@ -111,6 +111,12 @@ describe("desktop sync client adapter", () => {
         },
       ]),
       markChangeSynced: vi.fn().mockResolvedValue(undefined),
+      saveSyncState: vi.fn().mockResolvedValue({
+        serverCursor: "cursor-7",
+        lastSyncedAt: "2026-05-16T12:01:00.000Z",
+        lastError: null,
+        updatedAt: "2026-05-16T12:01:00.000Z",
+      }),
     } as unknown as TaskRepository;
     const syncApi = createSyncApi({
       store: createInMemorySyncStore(),
@@ -166,6 +172,12 @@ describe("desktop sync client adapter", () => {
         },
       ]),
       markChangeSynced: vi.fn().mockResolvedValue(undefined),
+      saveSyncState: vi.fn().mockResolvedValue({
+        serverCursor: "cursor-7",
+        lastSyncedAt: "2026-05-16T12:01:00.000Z",
+        lastError: null,
+        updatedAt: "2026-05-16T12:01:00.000Z",
+      }),
     } as unknown as TaskRepository;
     const syncApi = createSyncApi({
       store: createInMemorySyncStore(),
@@ -259,6 +271,12 @@ describe("desktop sync client adapter", () => {
         },
       ]),
       markChangeSynced: vi.fn().mockResolvedValue(undefined),
+      saveSyncState: vi.fn().mockResolvedValue({
+        serverCursor: "cursor-7",
+        lastSyncedAt: "2026-05-16T12:01:00.000Z",
+        lastError: null,
+        updatedAt: "2026-05-16T12:01:00.000Z",
+      }),
     } as unknown as TaskRepository;
     const transport = {
       deltaPush: vi.fn().mockResolvedValue({
@@ -310,6 +328,11 @@ describe("desktop sync client adapter", () => {
       "change-1",
       new Date("2026-05-16T12:01:00.000Z"),
     );
+    expect(repository.saveSyncState).toHaveBeenCalledWith({
+      serverCursor: "cursor-7",
+      lastSyncedAt: "2026-05-16T12:01:00.000Z",
+      lastError: null,
+    });
     expect(transport.deltaPush).toHaveBeenCalledTimes(1);
     expect(transport.listConflicts).toHaveBeenCalledTimes(1);
   });
@@ -318,6 +341,12 @@ describe("desktop sync client adapter", () => {
     const repository = {
       listPendingChanges: vi.fn().mockResolvedValue([]),
       markChangeSynced: vi.fn().mockResolvedValue(undefined),
+      saveSyncState: vi.fn().mockResolvedValue({
+        serverCursor: null,
+        lastSyncedAt: null,
+        lastError: "transport unavailable",
+        updatedAt: "2026-05-16T12:01:00.000Z",
+      }),
     } as unknown as TaskRepository;
     const transport = {
       deltaPush: vi.fn().mockRejectedValue(new Error("transport unavailable")),
@@ -337,6 +366,11 @@ describe("desktop sync client adapter", () => {
       result: null,
     });
     expect(repository.markChangeSynced).not.toHaveBeenCalled();
+    expect(repository.saveSyncState).toHaveBeenCalledWith({
+      serverCursor: null,
+      lastSyncedAt: null,
+      lastError: "transport unavailable",
+    });
     expect(transport.listConflicts).not.toHaveBeenCalled();
   });
 

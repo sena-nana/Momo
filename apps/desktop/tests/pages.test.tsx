@@ -11,6 +11,7 @@ import type { CreateTaskInput, Task, TodayTaskGroups } from "../src/domain/tasks
 import type {
   LocalSyncSimulationResult,
   PendingConflictSummary,
+  SyncRunnerRunOnceResult,
   SyncRunSummary,
 } from "../src/sync/syncClient";
 import Today from "../src/pages/Today";
@@ -421,6 +422,70 @@ describe("desktop MVP pages", () => {
     );
 
     expect(await screen.findByText("Error: simulation unavailable")).toBeInTheDocument();
+  });
+
+  it("accepts sync runner results from the settings simulation callback", async () => {
+    const repository = fakeRepository();
+    const runnerResult: SyncRunnerRunOnceResult = {
+      ok: true,
+      result: {
+        request: {
+          contractVersion: 1,
+          workspaceId: "local",
+          deviceId: "desktop-1",
+          changes: [],
+          clientSentAt: "2026-05-16T12:00:00.000Z",
+        },
+        push: {
+          acceptedChangeIds: [],
+          rejectedChanges: [],
+          conflicts: [],
+          serverCursor: "cursor-9",
+          summary: {
+            status: "all-synced",
+            message: "Already synced",
+            acceptedCount: 0,
+            rejectedCount: 0,
+            conflictCount: 0,
+            serverCursor: "cursor-9",
+          },
+        },
+        pendingConflictCount: 0,
+        pendingConflicts: [],
+      },
+    };
+
+    renderWithRepository(
+      <Settings onRunLocalSyncSimulation={vi.fn().mockResolvedValue(runnerResult)} />,
+      repository,
+    );
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Run local sync simulation" }),
+    );
+
+    expect(await screen.findByText("Sync status")).toBeInTheDocument();
+    expect(screen.getByText("cursor-9")).toBeInTheDocument();
+  });
+
+  it("shows sync runner errors from the settings simulation callback", async () => {
+    const repository = fakeRepository();
+    const runnerResult: SyncRunnerRunOnceResult = {
+      ok: false,
+      error: "transport unavailable",
+      result: null,
+    };
+
+    renderWithRepository(
+      <Settings onRunLocalSyncSimulation={vi.fn().mockResolvedValue(runnerResult)} />,
+      repository,
+    );
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Run local sync simulation" }),
+    );
+
+    expect(await screen.findByText("Error: transport unavailable")).toBeInTheDocument();
   });
 
   it("recovers settings database status errors with retry", async () => {

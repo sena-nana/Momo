@@ -5,13 +5,16 @@ import type { DatabaseStats, SyncState } from "../data/taskRepository";
 import type {
   LocalSyncSimulationResult,
   PendingConflictSummary,
+  SyncRunnerRunOnceResult,
   SyncRunSummary,
 } from "../sync/syncClient";
 
 interface SettingsProps {
   pendingConflicts?: PendingConflictSummary[];
   syncSummary?: SyncRunSummary | null;
-  onRunLocalSyncSimulation?: () => Promise<LocalSyncSimulationResult>;
+  onRunLocalSyncSimulation?: () => Promise<
+    LocalSyncSimulationResult | SyncRunnerRunOnceResult
+  >;
 }
 
 export default function Settings({
@@ -60,7 +63,17 @@ export default function Settings({
     setSimulationLoading(true);
     setSimulationError(null);
     try {
-      setSimulationResult(await onRunLocalSyncSimulation());
+      const result = await onRunLocalSyncSimulation();
+      if (isSyncRunnerRunOnceResult(result)) {
+        if (result.ok) {
+          setSimulationResult(result.result);
+        } else {
+          setSimulationResult(null);
+          setSimulationError(result.error);
+        }
+        return;
+      }
+      setSimulationResult(result);
     } catch (e) {
       setSimulationError(String(e));
     } finally {
@@ -182,4 +195,10 @@ export default function Settings({
       )}
     </section>
   );
+}
+
+function isSyncRunnerRunOnceResult(
+  result: LocalSyncSimulationResult | SyncRunnerRunOnceResult,
+): result is SyncRunnerRunOnceResult {
+  return typeof result === "object" && result !== null && "ok" in result;
 }
