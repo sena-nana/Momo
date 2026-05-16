@@ -95,7 +95,9 @@ export function summarizeDeltaPushResponse(
 
   return {
     status: "all-synced",
-    message: `${acceptedCount} local change${acceptedCount === 1 ? "" : "s"} synced`,
+    message: acceptedCount === 0
+      ? "Already synced"
+      : `${acceptedCount} local change${acceptedCount === 1 ? "" : "s"} synced`,
     acceptedCount,
     rejectedCount,
     conflictCount,

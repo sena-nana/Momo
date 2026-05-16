@@ -146,6 +146,26 @@ describe("desktop sync client adapter", () => {
     });
   });
 
+  it("summarizes an empty sync run as already synced", () => {
+    expect(
+      summarizeDeltaPushResponse({
+        contractVersion: SYNC_CONTRACT_VERSION,
+        acceptedChangeIds: [],
+        rejectedChanges: [],
+        conflicts: [],
+        serverCursor: "cursor-4",
+        serverTime: "2026-05-16T12:00:00.000Z",
+      }),
+    ).toEqual({
+      status: "all-synced",
+      message: "Already synced",
+      acceptedCount: 0,
+      rejectedCount: 0,
+      conflictCount: 0,
+      serverCursor: "cursor-4",
+    });
+  });
+
   it("summarizes rejected sync changes", () => {
     expect(
       summarizeDeltaPushResponse({
