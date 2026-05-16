@@ -4,7 +4,11 @@ import {
   mapTaskRow,
   normalizeCreateTaskInput,
 } from "../src/domain/tasks";
-import { createTaskRepository, type SqlDatabase } from "../src/data/taskRepository";
+import {
+  createTaskRepository,
+  type LocalChangeRow,
+  type SqlDatabase,
+} from "../src/data/taskRepository";
 
 describe("task domain", () => {
   it("normalizes create input and rejects blank titles", () => {
@@ -84,13 +88,15 @@ describe("TaskRepository", () => {
     expect(repository.databasePath).toBe("sqlite:momo.db");
     expect(db.executedSql.join("\n")).toContain("CREATE TABLE IF NOT EXISTS tasks");
     expect(db.executedSql.join("\n")).toContain("CREATE TABLE IF NOT EXISTS schema_migrations");
+    expect(db.executedSql.join("\n")).toContain("CREATE TABLE IF NOT EXISTS local_changes");
   });
 
-  it("creates a normalized active task row", async () => {
+  it("creates a normalized active task row and records a local change", async () => {
     const db = new RecordingDatabase();
     const repository = createTaskRepository(() => Promise.resolve(db), {
       now: () => new Date("2026-05-16T04:00:00.000Z"),
       id: () => "task-1",
+      changeId: () => "change-1",
     });
 
     const task = await repository.createTask({
@@ -109,7 +115,7 @@ describe("TaskRepository", () => {
       tags: ["work"],
       createdAt: "2026-05-16T04:00:00.000Z",
     });
-    expect(db.lastParams()).toEqual([
+    expect(db.paramsForSql("INSERT INTO tasks")).toEqual([
       "task-1",
       "Read inbox",
       null,
@@ -121,6 +127,53 @@ describe("TaskRepository", () => {
       "2026-05-16T04:00:00.000Z",
       "2026-05-16T04:00:00.000Z",
       null,
+    ]);
+    expect(db.paramsForSql("INSERT INTO local_changes")).toEqual([
+      "change-1",
+      "task",
+      "task-1",
+      "task.create",
+      JSON.stringify(task),
+      "2026-05-16T04:00:00.000Z",
+      null,
+    ]);
+  });
+
+  it("lists pending local changes and marks them synced", async () => {
+    const db = new RecordingDatabase({
+      localChanges: [
+        {
+          id: "change-1",
+          entity_type: "task",
+          entity_id: "task-1",
+          action: "task.update",
+          payload: '{"title":"Updated"}',
+          created_at: "2026-05-16T04:00:00.000Z",
+          synced_at: null,
+        },
+      ],
+    });
+    const repository = createTaskRepository(() => Promise.resolve(db), {
+      now: () => new Date("2026-05-16T05:00:00.000Z"),
+    });
+
+    await expect(repository.listPendingChanges()).resolves.toEqual([
+      {
+        id: "change-1",
+        entityType: "task",
+        entityId: "task-1",
+        action: "task.update",
+        payload: { title: "Updated" },
+        createdAt: "2026-05-16T04:00:00.000Z",
+        syncedAt: null,
+      },
+    ]);
+
+    await repository.markChangeSynced("change-1");
+
+    expect(db.paramsForSql("UPDATE local_changes")).toEqual([
+      "2026-05-16T05:00:00.000Z",
+      "change-1",
     ]);
   });
 });
@@ -148,6 +201,8 @@ function baseTask() {
 class RecordingDatabase implements SqlDatabase {
   calls: Array<{ sql: string; params?: unknown[] }> = [];
 
+  constructor(private rows: { localChanges?: LocalChangeRow[] } = {}) {}
+
   get executedSql() {
     return this.calls.map((call) => call.sql);
   }
@@ -157,11 +212,14 @@ class RecordingDatabase implements SqlDatabase {
     return { rowsAffected: 1 };
   }
 
-  async select<T>() {
+  async select<T>(sql: string) {
+    if (sql.includes("FROM local_changes")) {
+      return (this.rows.localChanges ?? []) as T[];
+    }
     return [] as T[];
   }
 
-  lastParams() {
-    return this.calls.at(-1)?.params;
+  paramsForSql(fragment: string) {
+    return this.calls.find((call) => call.sql.includes(fragment))?.params;
   }
 }

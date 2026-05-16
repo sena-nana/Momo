@@ -25,10 +25,38 @@ export interface TaskRepository {
   updateTask(id: string, patch: UpdateTaskInput): Promise<Task>;
   setStatus(id: string, status: TaskStatus): Promise<Task>;
   deleteTask(id: string): Promise<void>;
+  listPendingChanges(): Promise<LocalChange[]>;
+  markChangeSynced(id: string, syncedAt?: Date): Promise<void>;
   listToday(now: Date): Promise<TodayTaskGroups>;
   listInbox(): Promise<Task[]>;
   listAgenda(start: Date, end: Date): Promise<Task[]>;
   getStats(): Promise<DatabaseStats>;
+}
+
+export type LocalChangeAction =
+  | "task.create"
+  | "task.update"
+  | "task.status"
+  | "task.delete";
+
+export interface LocalChange {
+  id: string;
+  entityType: "task";
+  entityId: string;
+  action: LocalChangeAction;
+  payload: unknown;
+  createdAt: string;
+  syncedAt: string | null;
+}
+
+export interface LocalChangeRow {
+  id: string;
+  entity_type: "task";
+  entity_id: string;
+  action: LocalChangeAction;
+  payload: string;
+  created_at: string;
+  synced_at: string | null;
 }
 
 export interface DatabaseStats {
@@ -41,6 +69,7 @@ export interface DatabaseStats {
 interface RepositoryOptions {
   now?: () => Date;
   id?: () => string;
+  changeId?: () => string;
 }
 
 type DatabaseLoader = (path: string) => Promise<SqlDatabase>;
@@ -55,6 +84,7 @@ export function createTaskRepository(
   let initialized = false;
   const now = options.now ?? (() => new Date());
   const id = options.id ?? createId;
+  const changeId = options.changeId ?? createId;
 
   async function getDb() {
     dbPromise ??= loadDatabase(MOMO_DATABASE_PATH);
@@ -81,6 +111,29 @@ export function createTaskRepository(
       throw new Error("Task not found");
     }
     return mapTaskRow(row);
+  }
+
+  async function recordLocalChange(
+    db: SqlDatabase,
+    entityId: string,
+    action: LocalChangeAction,
+    payload: unknown,
+    createdAt = now().toISOString(),
+  ) {
+    await db.execute(
+      `INSERT INTO local_changes (
+        id, entity_type, entity_id, action, payload, created_at, synced_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [
+        changeId(),
+        "task",
+        entityId,
+        action,
+        JSON.stringify(payload),
+        createdAt,
+        null,
+      ],
+    );
   }
 
   return {
@@ -126,6 +179,7 @@ export function createTaskRepository(
           task.completedAt,
         ],
       );
+      await recordLocalChange(db, task.id, "task.create", task, timestamp);
       return task;
     },
 
@@ -145,13 +199,19 @@ export function createTaskRepository(
       }
 
       if (updates.length > 0) {
-        appendUpdate(updates, values, "updated_at", now().toISOString());
+        const timestamp = now().toISOString();
+        appendUpdate(updates, values, "updated_at", timestamp);
         values.push(taskId);
         const db = await getDb();
         await db.execute(
           `UPDATE tasks SET ${updates.join(", ")} WHERE id = $${values.length}`,
           values,
         );
+        await recordLocalChange(db, taskId, "task.update", {
+          id: taskId,
+          patch: normalized,
+          updatedAt: timestamp,
+        }, timestamp);
       }
 
       return selectTask(taskId);
@@ -166,13 +226,41 @@ export function createTaskRepository(
         "UPDATE tasks SET status = $1, completed_at = $2, updated_at = $3 WHERE id = $4",
         [status, completedAt, timestamp, taskId],
       );
+      await recordLocalChange(db, taskId, "task.status", {
+        id: taskId,
+        status,
+        completedAt,
+        updatedAt: timestamp,
+      }, timestamp);
       return selectTask(taskId);
     },
 
     async deleteTask(taskId) {
       await init();
+      const timestamp = now().toISOString();
       const db = await getDb();
       await db.execute("DELETE FROM tasks WHERE id = $1", [taskId]);
+      await recordLocalChange(db, taskId, "task.delete", { id: taskId }, timestamp);
+    },
+
+    async listPendingChanges() {
+      await init();
+      const db = await getDb();
+      const rows = await db.select<LocalChangeRow>(
+        `SELECT * FROM local_changes
+         WHERE synced_at IS NULL
+         ORDER BY created_at ASC`,
+      );
+      return rows.map(mapLocalChangeRow);
+    },
+
+    async markChangeSynced(changeIdToMark, syncedAt = now()) {
+      await init();
+      const db = await getDb();
+      await db.execute(
+        "UPDATE local_changes SET synced_at = $1 WHERE id = $2",
+        [syncedAt.toISOString(), changeIdToMark],
+      );
     },
 
     async listToday(currentDate) {
@@ -272,6 +360,37 @@ const SCHEMA = [
     updated_at TEXT NOT NULL,
     completed_at TEXT
   )`,
+  `CREATE TABLE IF NOT EXISTS local_changes (
+    id TEXT PRIMARY KEY,
+    entity_type TEXT NOT NULL,
+    entity_id TEXT NOT NULL,
+    action TEXT NOT NULL,
+    payload TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    synced_at TEXT
+  )`,
   `INSERT OR IGNORE INTO schema_migrations (version, name, applied_at)
    VALUES (1, 'create_tasks', datetime('now'))`,
+  `INSERT OR IGNORE INTO schema_migrations (version, name, applied_at)
+   VALUES (2, 'create_local_changes', datetime('now'))`,
 ];
+
+function mapLocalChangeRow(row: LocalChangeRow): LocalChange {
+  return {
+    id: row.id,
+    entityType: row.entity_type,
+    entityId: row.entity_id,
+    action: row.action,
+    payload: parsePayload(row.payload),
+    createdAt: row.created_at,
+    syncedAt: row.synced_at,
+  };
+}
+
+function parsePayload(payload: string) {
+  try {
+    return JSON.parse(payload);
+  } catch {
+    return payload;
+  }
+}
