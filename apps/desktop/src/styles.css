@@ -102,7 +102,13 @@ body { background: var(--bg); color: var(--text); }
   border: 0;
 }
 
-.row { display: flex; gap: 8px; align-items: center; margin-top: 10px; }
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-top: 10px;
+}
 .row input { flex: 1; min-width: 0; }
 input, button, select {
   font: inherit;
@@ -146,6 +152,13 @@ button:disabled {
   border-radius: 12px;
   padding: 12px;
   margin-bottom: 16px;
+}
+.quick-add select,
+.quick-add input[type="datetime-local"] {
+  flex: 0 1 190px;
+}
+.quick-add .estimate-input {
+  flex: 0 0 86px;
 }
 
 .state {
@@ -250,7 +263,7 @@ button:disabled {
 
 .edit-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 84px 38px 38px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 84px 178px 82px 38px 38px;
   width: 100%;
   gap: 8px;
 }

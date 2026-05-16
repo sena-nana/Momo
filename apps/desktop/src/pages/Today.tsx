@@ -12,6 +12,8 @@ export default function Today() {
   });
   const [title, setTitle] = useState("");
   const [destination, setDestination] = useState<"today" | "inbox">("today");
+  const [dueAtInput, setDueAtInput] = useState("");
+  const [estimateInput, setEstimateInput] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -40,9 +42,15 @@ export default function Today() {
     try {
       await repository.createTask({
         title,
-        dueAt: destination === "today" ? defaultTodayDueAt() : null,
+        dueAt:
+          destination === "today"
+            ? dueAtInputToIso(dueAtInput) ?? defaultTodayDueAt()
+            : null,
+        estimateMin: estimateInputToNumber(estimateInput),
       });
       setTitle("");
+      setDueAtInput("");
+      setEstimateInput("");
       await load();
     } catch (e) {
       setError(String(e));
@@ -82,6 +90,29 @@ export default function Today() {
             <option value="today">Today</option>
             <option value="inbox">Inbox</option>
           </select>
+          <label className="sr-only" htmlFor="task-due-at">
+            Task due date
+          </label>
+          <input
+            id="task-due-at"
+            type="datetime-local"
+            value={dueAtInput}
+            onChange={(event) => setDueAtInput(event.target.value)}
+            disabled={destination === "inbox"}
+          />
+          <label className="sr-only" htmlFor="task-estimate">
+            Task estimate minutes
+          </label>
+          <input
+            id="task-estimate"
+            className="estimate-input"
+            type="number"
+            min="1"
+            step="1"
+            value={estimateInput}
+            onChange={(event) => setEstimateInput(event.target.value)}
+            placeholder="min"
+          />
           <button type="submit" disabled={saving || !title.trim()}>
             <Plus size={16} aria-hidden="true" />
             {destination === "today" ? "Add for today" : "Add task"}
@@ -113,6 +144,16 @@ export default function Today() {
       )}
     </section>
   );
+}
+
+function dueAtInputToIso(value: string) {
+  if (!value) return null;
+  return new Date(value).toISOString();
+}
+
+function estimateInputToNumber(value: string) {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
 }
 
 function TaskSection({

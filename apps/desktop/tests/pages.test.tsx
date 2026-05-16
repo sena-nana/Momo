@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { TaskRepositoryProvider } from "../src/data/TaskRepositoryContext";
@@ -60,6 +60,28 @@ describe("desktop MVP pages", () => {
     );
   });
 
+  it("quick-adds a task with estimate and an explicit due date", async () => {
+    const repository = fakeRepository();
+
+    renderWithRepository(<Today />, repository);
+
+    await screen.findByText("Due today");
+    await userEvent.type(screen.getByLabelText("Quick add task"), "Deep work");
+    fireEvent.change(screen.getByLabelText("Task due date"), {
+      target: { value: "2026-05-18T09:30" },
+    });
+    await userEvent.type(screen.getByLabelText("Task estimate minutes"), "45");
+    await userEvent.click(screen.getByRole("button", { name: "Add for today" }));
+
+    expect(repository.createTask).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: "Deep work",
+        dueAt: expect.any(String),
+        estimateMin: 45,
+      }),
+    );
+  });
+
   it("shows inbox tasks and supports complete/delete actions", async () => {
     const repository = fakeRepository({
       inbox: [task({ id: "inbox-1", title: "Inbox task" })],
@@ -113,6 +135,37 @@ describe("desktop MVP pages", () => {
       title: "Updated task",
       notes: "Deeper detail",
       priority: 2,
+    });
+  });
+
+  it("edits inbox task due date and estimate", async () => {
+    const repository = fakeRepository({
+      inbox: [task({ id: "inbox-1", title: "Inbox task" })],
+    });
+
+    renderWithRepository(<Inbox />, repository);
+
+    const item = await screen.findByText("Inbox task");
+    const row = item.closest("li");
+    expect(row).not.toBeNull();
+
+    await userEvent.click(
+      within(row as HTMLElement).getByRole("button", {
+        name: "Edit Inbox task",
+      }),
+    );
+    fireEvent.change(screen.getByLabelText("Edit Inbox task due date"), {
+      target: { value: "2026-05-19T14:15" },
+    });
+    await userEvent.type(screen.getByLabelText("Edit Inbox task estimate minutes"), "30");
+    await userEvent.click(screen.getByRole("button", { name: "Save Inbox task" }));
+
+    expect(repository.updateTask).toHaveBeenCalledWith("inbox-1", {
+      title: "Inbox task",
+      notes: "",
+      priority: 0,
+      dueAt: expect.any(String),
+      estimateMin: 30,
     });
   });
 

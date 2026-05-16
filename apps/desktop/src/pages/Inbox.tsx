@@ -7,6 +7,8 @@ interface DraftTask {
   title: string;
   notes: string;
   priority: TaskPriority;
+  dueAtInput: string;
+  estimateInput: string;
 }
 
 export default function Inbox() {
@@ -17,6 +19,8 @@ export default function Inbox() {
     title: "",
     notes: "",
     priority: 0,
+    dueAtInput: "",
+    estimateInput: "",
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -53,17 +57,24 @@ export default function Inbox() {
       title: task.title,
       notes: task.notes ?? "",
       priority: task.priority,
+      dueAtInput: isoToDateTimeInput(task.dueAt),
+      estimateInput: task.estimateMin?.toString() ?? "",
     });
   }
 
   async function saveEdit(event: FormEvent, task: Task) {
     event.preventDefault();
     if (!draft.title.trim()) return;
-    await repository.updateTask(task.id, {
+    const patch = {
       title: draft.title,
       notes: draft.notes,
       priority: draft.priority,
-    });
+      ...(draft.dueAtInput ? { dueAt: dateTimeInputToIso(draft.dueAtInput) } : {}),
+      ...(draft.estimateInput
+        ? { estimateMin: estimateInputToNumber(draft.estimateInput) }
+        : {}),
+    };
+    await repository.updateTask(task.id, patch);
     setEditing(null);
     await load();
   }
@@ -123,6 +134,31 @@ export default function Inbox() {
                     <option value={2}>P2</option>
                     <option value={3}>P3</option>
                   </select>
+                  <input
+                    aria-label={`Edit ${task.title} due date`}
+                    type="datetime-local"
+                    value={draft.dueAtInput}
+                    onChange={(event) =>
+                      setDraft((current) => ({
+                        ...current,
+                        dueAtInput: event.target.value,
+                      }))
+                    }
+                  />
+                  <input
+                    aria-label={`Edit ${task.title} estimate minutes`}
+                    type="number"
+                    min="1"
+                    step="1"
+                    value={draft.estimateInput}
+                    onChange={(event) =>
+                      setDraft((current) => ({
+                        ...current,
+                        estimateInput: event.target.value,
+                      }))
+                    }
+                    placeholder="min"
+                  />
                   <button type="submit" aria-label={`Save ${task.title}`}>
                     <Save size={16} aria-hidden="true" />
                   </button>
@@ -177,4 +213,20 @@ export default function Inbox() {
       )}
     </section>
   );
+}
+
+function isoToDateTimeInput(value: string | null) {
+  if (!value) return "";
+  const date = new Date(value);
+  const offsetDate = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
+  return offsetDate.toISOString().slice(0, 16);
+}
+
+function dateTimeInputToIso(value: string) {
+  return new Date(value).toISOString();
+}
+
+function estimateInputToNumber(value: string) {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
 }
