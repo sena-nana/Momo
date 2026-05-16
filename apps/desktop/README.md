@@ -71,6 +71,7 @@ npm install
 - Settings 会从本地 `sync_state` 读取并展示只读 `Sync state`，用于排查 cursor、最近同步时间和最近错误。
 - `sync_state` 是当前本地 `cursor state boundary`，仍只保存同步游标和错误状态，不承担任务合并。
 - Settings 可注入 `onRunLocalSyncSimulation` 显示 `Local sync simulation` 演示按钮；该按钮是 keyboard-accessible 的普通 button，只调用注入回调，不会自动连接真实网络。
+- 本地同步演示成功后会重新读取 repository，并 refreshes `Sync state` 与 `Pending sync`，让 runner 写回后的 cursor / error / pending count 可见。
 - 当前没有真实网络请求、账号、后台任务或定时同步；这些仍属于后续 BE-01 / BE-03 范围。
 
 下一轮建议做手动验收说明和开发态检查：启动 `/settings`，点击 `Local sync simulation`，确认 `sync_state` 和 `Sync status` 刷新；仍先不接真实网络层。

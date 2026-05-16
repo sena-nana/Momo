@@ -68,6 +68,7 @@ export default function Settings({
       if (isSyncRunnerRunOnceResult(result)) {
         if (result.ok) {
           setSimulationResult(result.result);
+          await load();
         } else {
           setSimulationResult(null);
           setSimulationError(result.error);
@@ -75,6 +76,7 @@ export default function Settings({
         return;
       }
       setSimulationResult(result);
+      await load();
     } catch (e) {
       setSimulationError(String(e));
     } finally {

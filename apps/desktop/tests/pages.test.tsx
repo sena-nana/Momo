@@ -525,6 +525,94 @@ describe("desktop MVP pages", () => {
     expect(screen.queryByRole("button", { name: /pull/i })).not.toBeInTheDocument();
   });
 
+  it("refreshes local database and sync state after local sync simulation succeeds", async () => {
+    const repository = fakeRepository();
+    vi.mocked(repository.getStats)
+      .mockResolvedValueOnce({
+        databasePath: "sqlite:momo.db",
+        totalTasks: 4,
+        activeTasks: 2,
+        completedTasks: 1,
+        pendingLocalChanges: 2,
+      })
+      .mockResolvedValueOnce({
+        databasePath: "sqlite:momo.db",
+        totalTasks: 5,
+        activeTasks: 3,
+        completedTasks: 1,
+        pendingLocalChanges: 0,
+      });
+    vi.mocked(repository.getSyncState)
+      .mockResolvedValueOnce({
+        serverCursor: "cursor-before",
+        lastSyncedAt: "2026-05-16T11:59:00.000Z",
+        lastError: "previous error",
+        updatedAt: "2026-05-16T11:59:00.000Z",
+      })
+      .mockResolvedValueOnce({
+        serverCursor: "cursor-from-repository",
+        lastSyncedAt: "2026-05-16T12:00:00.000Z",
+        lastError: null,
+        updatedAt: "2026-05-16T12:00:00.000Z",
+      });
+    const runnerResult: SyncRunnerRunOnceResult = {
+      ok: true,
+      result: {
+        request: {
+          contractVersion: 1,
+          workspaceId: "local",
+          deviceId: "desktop-1",
+          changes: [],
+          clientSentAt: "2026-05-16T12:00:00.000Z",
+        },
+        push: {
+          acceptedChangeIds: [],
+          rejectedChanges: [],
+          conflicts: [],
+          serverCursor: "cursor-push",
+          summary: {
+            status: "all-synced",
+            message: "Already synced",
+            acceptedCount: 0,
+            rejectedCount: 0,
+            conflictCount: 0,
+            serverCursor: "cursor-push",
+          },
+        },
+        pull: {
+          appliedTaskCount: 1,
+          deletedTaskCount: 0,
+          serverCursor: "cursor-pull-result",
+        },
+        pendingConflictCount: 0,
+        pendingConflicts: [],
+      },
+    };
+
+    renderWithRepository(
+      <Settings onRunLocalSyncSimulation={vi.fn().mockResolvedValue(runnerResult)} />,
+      repository,
+    );
+
+    expect(await screen.findByText("cursor-before")).toBeInTheDocument();
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Run local sync simulation" }),
+    );
+
+    const pendingRow = await screen.findByText("Pending sync").then((label) =>
+      label.closest("li"),
+    );
+    const serverCursorRow = screen.getByText("Server cursor").closest("li");
+    const lastErrorRow = screen.getByText("Last error").closest("li");
+    expect(repository.getStats).toHaveBeenCalledTimes(2);
+    expect(repository.getSyncState).toHaveBeenCalledTimes(2);
+    expect(within(pendingRow as HTMLElement).getByText("0")).toBeInTheDocument();
+    expect(
+      within(serverCursorRow as HTMLElement).getByText("cursor-from-repository"),
+    ).toBeInTheDocument();
+    expect(within(lastErrorRow as HTMLElement).getByText("None")).toBeInTheDocument();
+  });
+
   it("shows sync runner errors from the settings simulation callback", async () => {
     const repository = fakeRepository();
     const runnerResult: SyncRunnerRunOnceResult = {
