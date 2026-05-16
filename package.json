@@ -1,0 +1,13 @@
+{
+  "name": "momo-workspace",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "verify": "npm run verify:desktop:test && npm run verify:desktop:build && npm run verify:tauri && npm run verify:contracts && npm run verify:api",
+    "verify:desktop:test": "npm --prefix apps/desktop run test",
+    "verify:desktop:build": "npm --prefix apps/desktop run build",
+    "verify:tauri": "cargo check --manifest-path apps/desktop/src-tauri/Cargo.toml",
+    "verify:contracts": "node apps/desktop/node_modules/typescript/bin/tsc -p packages/contracts/tsconfig.json",
+    "verify:api": "node apps/desktop/node_modules/typescript/bin/tsc -p apps/api/tsconfig.json"
+  }
+}
