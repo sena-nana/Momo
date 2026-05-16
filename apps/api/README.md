@@ -26,6 +26,11 @@
 | POST | `/sync/delta/pull` | `sync.deltaPull` |
 | POST | `/sync/conflicts/resolve` | `sync.resolveConflict` |
 
+`POST /sync/conflicts/resolve` 的 `manual` 策略只把冲突标记为等待人工处理：
+返回 HTTP-like `202`，body 中 `status` 为 `pending_manual`，`resolvedTask` 为
+`null`。该路径不会应用客户端变更、不会删除冲突，也不会推进 `serverCursor`；
+后续仍可用 `server_wins` 或 `client_wins` 完成实际解决。
+
 Task routes 目前通过 headers 注入 actor 占位：
 
 - `x-workspace-id`

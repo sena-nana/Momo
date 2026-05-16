@@ -132,10 +132,10 @@ async function handleSyncRoute(
   }
 
   if (request.method === "POST" && segments.join("/") === "sync/conflicts/resolve") {
-    return json(
-      200,
-      await syncApi.resolveConflict(body as ResolveTaskConflictRequest),
+    const response = await syncApi.resolveConflict(
+      body as ResolveTaskConflictRequest,
     );
+    return json(response.status === "pending_manual" ? 202 : 200, response);
   }
 
   return json(404, { error: "Route not found" });

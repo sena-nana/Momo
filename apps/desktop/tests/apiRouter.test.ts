@@ -236,6 +236,64 @@ describe("API route adapter skeleton", () => {
       body: { error: "Conflict not found" },
     });
   });
+
+  it("routes manual conflict resolution as an accepted pending decision", async () => {
+    const router = createRouter();
+    await router.handle({
+      method: "POST",
+      path: "/sync/delta/push",
+      body: createDeltaPushRequest({
+        workspaceId: "workspace-a",
+        deviceId: "desktop-1",
+        changes: [taskCreateChange("change-1", "Original task", 0)],
+        now: new Date("2026-05-16T09:01:00.000Z"),
+      }),
+    });
+    await router.handle({
+      method: "POST",
+      path: "/sync/delta/push",
+      body: createDeltaPushRequest({
+        workspaceId: "workspace-a",
+        deviceId: "desktop-1",
+        changes: [taskUpdateChange("change-2", "Server task", 1)],
+        now: new Date("2026-05-16T09:02:00.000Z"),
+      }),
+    });
+    await router.handle({
+      method: "POST",
+      path: "/sync/delta/push",
+      body: createDeltaPushRequest({
+        workspaceId: "workspace-a",
+        deviceId: "desktop-1",
+        changes: [taskUpdateChange("change-3", "Stale task", 1)],
+        now: new Date("2026-05-16T09:03:00.000Z"),
+      }),
+    });
+
+    await expect(
+      router.handle({
+        method: "POST",
+        path: "/sync/conflicts/resolve",
+        body: createResolveTaskConflictRequest({
+          workspaceId: "workspace-a",
+          deviceId: "desktop-1",
+          conflictId: "conflict-change-3",
+          strategy: "manual",
+          resolvedBy: "user-1",
+          note: "Needs visual merge",
+        }),
+      }),
+    ).resolves.toMatchObject({
+      status: 202,
+      body: {
+        conflictId: "conflict-change-3",
+        strategy: "manual",
+        status: "pending_manual",
+        resolvedTask: null,
+        serverCursor: "cursor-2",
+      },
+    });
+  });
 });
 
 function createRouter() {
