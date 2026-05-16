@@ -240,7 +240,9 @@ describe("desktop sync client adapter", () => {
         deviceId: "desktop-1",
         sinceCursor: null,
       }),
-    ).rejects.toThrow("Unsupported sync contract version");
+    ).rejects.toThrow(
+      "POST /sync/delta/pull failed with 400: Unsupported sync contract version",
+    );
     expect(router.handle).toHaveBeenCalledWith({
       method: "POST",
       path: "/sync/delta/pull",

@@ -52,7 +52,9 @@ async function handleSyncRoute<TResponse>(
 ): Promise<TResponse> {
   const response = await router.handle({ method, path, body });
   if (response.status < 200 || response.status >= 300) {
-    throw new Error(getResponseError(response.body));
+    throw new Error(
+      `${method} ${path} failed with ${response.status}: ${getResponseError(response.body)}`,
+    );
   }
   return response.body as TResponse;
 }
