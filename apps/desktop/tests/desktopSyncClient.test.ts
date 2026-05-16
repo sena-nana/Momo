@@ -13,6 +13,7 @@ import {
   SYNC_RUN_STATUSES,
   applyDeltaPushResponse,
   buildDeltaPushFromPendingChanges,
+  createSyncRunner,
   runLocalSyncSimulation,
   summarizeDeltaPushResponse,
   summarizePendingConflicts,
@@ -242,6 +243,101 @@ describe("desktop sync client adapter", () => {
       ],
     });
     expect(repository.markChangeSynced).not.toHaveBeenCalled();
+  });
+
+  it("runs sync through an explicit desktop sync runner boundary", async () => {
+    const repository = {
+      listPendingChanges: vi.fn().mockResolvedValue([
+        {
+          id: "change-1",
+          entityType: "task",
+          entityId: "task-1",
+          action: "task.create",
+          payload: { title: "Runner task" },
+          createdAt: "2026-05-16T10:00:00.000Z",
+          syncedAt: null,
+        },
+      ]),
+      markChangeSynced: vi.fn().mockResolvedValue(undefined),
+    } as unknown as TaskRepository;
+    const transport = {
+      deltaPush: vi.fn().mockResolvedValue({
+        contractVersion: SYNC_CONTRACT_VERSION,
+        acceptedChangeIds: ["change-1"],
+        rejectedChanges: [],
+        conflicts: [],
+        serverCursor: "cursor-7",
+        serverTime: "2026-05-16T12:02:00.000Z",
+      } satisfies DeltaPushResponse),
+      listConflicts: vi.fn().mockResolvedValue({
+        contractVersion: SYNC_CONTRACT_VERSION,
+        conflicts: [],
+        serverCursor: "cursor-7",
+        serverTime: "2026-05-16T12:02:00.000Z",
+      }),
+    };
+
+    const runner = createSyncRunner({
+      repository,
+      transport,
+      workspaceId: "local",
+      deviceId: "desktop-1",
+      now: () => new Date("2026-05-16T12:01:00.000Z"),
+    });
+
+    await expect(runner.runOnce()).resolves.toMatchObject({
+      ok: true,
+      result: {
+        request: {
+          workspaceId: "local",
+          deviceId: "desktop-1",
+          changes: [{ id: "change-1" }],
+          clientSentAt: "2026-05-16T12:01:00.000Z",
+        },
+        push: {
+          acceptedChangeIds: ["change-1"],
+          summary: {
+            status: "all-synced",
+            message: "1 local change synced",
+            serverCursor: "cursor-7",
+          },
+        },
+        pendingConflictCount: 0,
+        pendingConflicts: [],
+      },
+    });
+    expect(repository.markChangeSynced).toHaveBeenCalledWith(
+      "change-1",
+      new Date("2026-05-16T12:01:00.000Z"),
+    );
+    expect(transport.deltaPush).toHaveBeenCalledTimes(1);
+    expect(transport.listConflicts).toHaveBeenCalledTimes(1);
+  });
+
+  it("returns sync runner transport errors instead of throwing them into pages", async () => {
+    const repository = {
+      listPendingChanges: vi.fn().mockResolvedValue([]),
+      markChangeSynced: vi.fn().mockResolvedValue(undefined),
+    } as unknown as TaskRepository;
+    const transport = {
+      deltaPush: vi.fn().mockRejectedValue(new Error("transport unavailable")),
+      listConflicts: vi.fn(),
+    };
+    const runner = createSyncRunner({
+      repository,
+      transport,
+      workspaceId: "local",
+      deviceId: "desktop-1",
+      now: () => new Date("2026-05-16T12:01:00.000Z"),
+    });
+
+    await expect(runner.runOnce()).resolves.toEqual({
+      ok: false,
+      error: "transport unavailable",
+      result: null,
+    });
+    expect(repository.markChangeSynced).not.toHaveBeenCalled();
+    expect(transport.listConflicts).not.toHaveBeenCalled();
   });
 
   it("marks accepted changes as synced and returns unresolved sync results", async () => {

@@ -15,6 +15,9 @@ describe("desktop README", () => {
     expect(readme).toContain("buildDeltaPushFromPendingChanges");
     expect(readme).toContain("applyDeltaPushResponse");
     expect(readme).toContain("runLocalSyncSimulation");
+    expect(readme).toContain("createSyncRunner");
+    expect(readme).toContain("runOnce");
+    expect(readme).toContain("transport");
     expect(readme).toContain("pendingConflictCount");
     expect(readme).toContain("SYNC_RUN_STATUSES");
     expect(readme).toContain("summarizeDeltaPushResponse");
@@ -26,6 +29,7 @@ describe("desktop README", () => {
     expect(readme).toContain("Local sync simulation");
     expect(readme).toContain("keyboard-accessible");
     expect(readme).toContain("sync runner boundary");
+    expect(readme).toContain("cursor state boundary");
     expect(readme).toContain("local simulation entrypoint");
     expect(readme).toContain("npm run verify");
   });

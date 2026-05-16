@@ -56,6 +56,62 @@ export interface LocalSyncSimulationResult {
   pendingConflicts: PendingConflictSummary[];
 }
 
+export type SyncRunnerTransport = LocalSyncSimulationApi;
+
+export interface SyncRunnerOptions {
+  repository: Pick<TaskRepository, "listPendingChanges" | "markChangeSynced">;
+  transport: SyncRunnerTransport;
+  workspaceId: string;
+  deviceId: string;
+  now: () => Date;
+}
+
+export type SyncRunnerRunOnceResult =
+  | {
+    ok: true;
+    result: LocalSyncSimulationResult;
+  }
+  | {
+    ok: false;
+    error: string;
+    result: null;
+  };
+
+export interface SyncRunner {
+  runOnce(): Promise<SyncRunnerRunOnceResult>;
+}
+
+export function createSyncRunner({
+  repository,
+  transport,
+  workspaceId,
+  deviceId,
+  now,
+}: SyncRunnerOptions): SyncRunner {
+  return {
+    async runOnce() {
+      try {
+        return {
+          ok: true,
+          result: await runLocalSyncSimulation({
+            repository,
+            syncApi: transport,
+            workspaceId,
+            deviceId,
+            now: now(),
+          }),
+        };
+      } catch (e) {
+        return {
+          ok: false,
+          error: getErrorMessage(e),
+          result: null,
+        };
+      }
+    },
+  };
+}
+
 export async function runLocalSyncSimulation({
   repository,
   syncApi,
@@ -230,4 +286,8 @@ function summarizeClientPayload(payload: unknown) {
   return entries
     .map(([key, value]) => `${key}: ${JSON.stringify(value)}`)
     .join(", ");
+}
+
+function getErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : String(error);
 }

@@ -55,6 +55,7 @@ npm install
 - `buildDeltaPushFromPendingChanges()` 从 `TaskRepository.listPendingChanges()` 构造 `DeltaPushRequest`。
 - `applyDeltaPushResponse()` 会把服务端 accepted change ids 通过 `TaskRepository.markChangeSynced()` 标记为已同步。
 - `runLocalSyncSimulation()` 可用注入的内存 sync API 串起 pending changes、delta push、accepted 标记与 pending conflict 摘要，用于本地端到端演练；返回值包含 `pendingConflictCount`。
+- `createSyncRunner()` 是桌面端 sync runner boundary；`runOnce()` 接收注入的 `transport`、workspace/device 与 clock，负责编排一次同步并把 transport 错误归一成可展示结果。
 - rejected changes 与 conflicts 目前只作为摘要返回给调用方，不会自动重试、覆盖或解决冲突。
 - `SYNC_RUN_STATUSES` 固定导出同步运行状态列表；`summarizeDeltaPushResponse()` 会把一次 delta push 响应归纳成 `all-synced`、`has-rejections` 或 `has-conflicts` 状态文案；无变更时显示 `Already synced`。
 - `summarizePendingConflicts()` 可把待处理冲突映射成只读展示摘要，保留 conflict/task/change id、原因、server task 标题/版本与 client payload 摘要。
@@ -63,7 +64,7 @@ npm install
 - Settings 可注入 `onRunLocalSyncSimulation` 显示 `Local sync simulation` 演示按钮；该按钮是 keyboard-accessible 的普通 button，只调用注入回调，不会自动连接真实网络。
 - 当前没有真实网络请求、账号、后台任务或定时同步；这些仍属于后续 BE-01 / BE-03 范围。
 
-下一轮建议先定义 `sync runner boundary`：由谁触发同步、如何注入 workspace/device、怎样持久化 cursor、失败如何回传到 Settings。若继续保持无后端开发节奏，可以先做 `local simulation entrypoint`，用内存 `createSyncApi()` 驱动一次端到端同步演练，再替换成真实网络层。
+下一轮建议先做 `cursor state boundary`：在本地持久化最新 server cursor 与最近同步错误，再把已有 `sync runner boundary` 和 `local simulation entrypoint` 连接到该状态层；仍先不接真实网络层。
 
 ## 当前限制
 
