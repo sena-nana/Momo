@@ -61,6 +61,8 @@ npm install
 - Settings 也支持注入只读 `Sync status` 摘要，用于展示最近一次同步运行结果、计数和 cursor。
 - 当前没有真实网络请求、账号、后台任务或定时同步；这些仍属于后续 BE-01 / BE-03 范围。
 
+下一轮建议先定义 `sync runner boundary`：由谁触发同步、如何注入 workspace/device、怎样持久化 cursor、失败如何回传到 Settings。若继续保持无后端开发节奏，可以先做 `local simulation entrypoint`，用内存 `createSyncApi()` 驱动一次端到端同步演练，再替换成真实网络层。
+
 ## 当前限制
 
 - 登录是纯前端跳转占位，OIDC / Passkeys 接入对应后端任务 **BE-01**。

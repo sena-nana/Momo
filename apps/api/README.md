@@ -36,6 +36,17 @@
 `null`。该路径不会应用客户端变更、不会删除冲突，也不会推进 `serverCursor`；
 后续仍可用 `server_wins` 或 `client_wins` 完成实际解决。
 
+## Sync visibility scope
+
+当前内存同步链路已覆盖：
+
+- delta push / pull 的 cursor 语义。
+- update/status payload 的 `baseVersion` 冲突检测。
+- `server_wins`、`client_wins` 与 `manual` 冲突解决语义。
+- `GET /sync/conflicts` 待处理冲突列表。
+
+当前仍没有真实 HTTP server、持久化后端、认证、PostgreSQL、WebSocket 或后台同步任务。
+
 Task routes 目前通过 headers 注入 actor 占位：
 
 - `x-workspace-id`

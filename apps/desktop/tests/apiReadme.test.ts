@@ -24,4 +24,17 @@ describe("API README", () => {
     expect(readme).toContain("/sync/conflicts");
     expect(readme).toContain("sync.listConflicts");
   });
+
+  it("summarizes the current sync visibility scope and backend limits", () => {
+    const readme = readFileSync(
+      resolve(process.cwd(), "../../apps/api/README.md"),
+      "utf-8",
+    );
+
+    expect(readme).toContain("Sync visibility scope");
+    expect(readme).toContain("baseVersion");
+    expect(readme).toContain("server_wins");
+    expect(readme).toContain("client_wins");
+    expect(readme).toContain("真实 HTTP server");
+  });
 });
