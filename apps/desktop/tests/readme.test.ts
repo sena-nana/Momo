@@ -48,6 +48,10 @@ describe("desktop README", () => {
     expect(readme).toContain("Vite smoke only verifies the route, button, and error handling");
     expect(readme).toContain("Full SQLite success flow requires `npm run tauri dev`");
     expect(readme).toContain("no real network");
+    expect(readme).toContain("Next sync boundary");
+    expect(readme).toContain("delta pull application boundary");
+    expect(readme).toContain("apply pulled tasks into local SQLite");
+    expect(readme).toContain("real HTTP transport remains later");
     expect(readme).toContain("npm run verify");
   });
 });

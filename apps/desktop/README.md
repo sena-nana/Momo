@@ -81,6 +81,12 @@ npm install
 - confirm `Sync state` 中的 cursor / last synced / last error 状态可见。
 - 该检查使用 in-memory transport，no real network、账号、后台任务或生产同步。
 
+## Next sync boundary
+
+- 下一步优先做 `delta pull application boundary`，把服务端返回的 delta pull 结果 apply pulled tasks into local SQLite。
+- 该边界应复用 `sync_state.serverCursor` 作为 pull 起点，并在应用完成后写回新 cursor。
+- real HTTP transport remains later；当前仍先保持 in-memory transport 和 HTTP-like router 语义验证。
+
 ## 当前限制
 
 - 登录是纯前端跳转占位，OIDC / Passkeys 接入对应后端任务 **BE-01**。
