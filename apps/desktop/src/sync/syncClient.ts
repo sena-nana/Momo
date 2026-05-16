@@ -1,4 +1,8 @@
-import { createDeltaPushRequest, type LocalChangeDto } from "../../../../packages/contracts/src";
+import {
+  createDeltaPushRequest,
+  type DeltaPushResponse,
+  type LocalChangeDto,
+} from "../../../../packages/contracts/src";
 import type { LocalChange, TaskRepository } from "../data/taskRepository";
 
 export interface BuildDeltaPushOptions {
@@ -22,6 +26,29 @@ export async function buildDeltaPushFromPendingChanges({
     changes: changes.map(toLocalChangeDto),
     now,
   });
+}
+
+export interface ApplyDeltaPushResponseOptions {
+  repository: Pick<TaskRepository, "markChangeSynced">;
+  response: DeltaPushResponse;
+  syncedAt: Date;
+}
+
+export async function applyDeltaPushResponse({
+  repository,
+  response,
+  syncedAt,
+}: ApplyDeltaPushResponseOptions) {
+  for (const changeId of response.acceptedChangeIds) {
+    await repository.markChangeSynced(changeId, syncedAt);
+  }
+
+  return {
+    acceptedChangeIds: response.acceptedChangeIds,
+    rejectedChanges: response.rejectedChanges,
+    conflicts: response.conflicts,
+    serverCursor: response.serverCursor,
+  };
 }
 
 function toLocalChangeDto(change: LocalChange): LocalChangeDto {
