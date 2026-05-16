@@ -1,6 +1,6 @@
-# Momo · Desktop (Tauri 2 + React + TypeScript)
+# Momo · Desktop (Tauri 2 + Vue 3 + TypeScript)
 
-桌面端本地 MVP。当前完成了 Tauri 2 + React + TypeScript 壳、本地 SQLite 任务存储、Today / Inbox / Calendar / Settings 四个主页面、widget 窗口，以及后续同步使用的共享 contract 骨架。
+桌面端本地 MVP。当前完成了 Tauri 2 + Vue 3 + TypeScript 壳、本地 SQLite 任务存储、Today / Inbox / Calendar / Settings 四个主页面、widget 窗口，以及后续同步使用的共享 contract 骨架。
 
 ## 前置工具链
 

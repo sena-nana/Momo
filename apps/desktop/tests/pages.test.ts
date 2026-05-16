@@ -1,8 +1,8 @@
-import { fireEvent, render, screen, within } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router-dom";
+import { fireEvent, render, screen, within } from "@testing-library/vue";
+import { createMemoryHistory } from "vue-router";
 import { describe, expect, it, vi } from "vitest";
-import { TaskRepositoryProvider } from "../src/data/TaskRepositoryContext";
+import type { Component } from "vue";
+import { TaskRepositoryKey } from "../src/data/TaskRepositoryContext";
 import type {
   DatabaseStats,
   SyncState,
@@ -16,12 +16,13 @@ import type {
   SyncRunSummary,
 } from "../src/sync/syncClient";
 import type { RemoteSyncConfig } from "../src/sync/remoteSyncConfig";
-import Today from "../src/pages/Today";
-import Inbox from "../src/pages/Inbox";
-import Calendar from "../src/pages/Calendar";
-import Settings from "../src/pages/Settings";
-import Widget from "../src/pages/Widget";
-import App from "../src/App";
+import Today from "../src/pages/Today.vue";
+import Inbox from "../src/pages/Inbox.vue";
+import Calendar from "../src/pages/Calendar.vue";
+import Settings from "../src/pages/Settings.vue";
+import Widget from "../src/pages/Widget.vue";
+import App from "../src/App.vue";
+import { createMomoRouter } from "../src/router";
 
 describe("desktop MVP pages", () => {
   it("shows today's groups and quick-adds a task for today", async () => {
@@ -35,14 +36,14 @@ describe("desktop MVP pages", () => {
       },
     });
 
-    renderWithRepository(<Today />, repository);
+    renderWithRepository(Today, repository);
 
     expect(await screen.findByText("Late invoice")).toBeInTheDocument();
     expect(screen.getByText("Focus block")).toBeInTheDocument();
     expect(screen.getByText("Done review")).toBeInTheDocument();
 
-    await userEvent.type(screen.getByLabelText("Quick add task"), "Write brief");
-    await userEvent.click(screen.getByRole("button", { name: "Add for today" }));
+    await fireEvent.update(screen.getByLabelText("Quick add task"), "Write brief");
+    await fireEvent.click(screen.getByRole("button", { name: "Add for today" }));
 
     expect(repository.createTask).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -55,12 +56,12 @@ describe("desktop MVP pages", () => {
   it("quick-adds an undated task into inbox", async () => {
     const repository = fakeRepository();
 
-    renderWithRepository(<Today />, repository);
+    renderWithRepository(Today, repository);
 
     await screen.findByText("Due today");
-    await userEvent.selectOptions(screen.getByLabelText("Task destination"), "inbox");
-    await userEvent.type(screen.getByLabelText("Quick add task"), "Capture idea");
-    await userEvent.click(screen.getByRole("button", { name: "Add task" }));
+    await fireEvent.update(screen.getByLabelText("Task destination"), "inbox");
+    await fireEvent.update(screen.getByLabelText("Quick add task"), "Capture idea");
+    await fireEvent.click(screen.getByRole("button", { name: "Add task" }));
 
     expect(repository.createTask).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -73,15 +74,13 @@ describe("desktop MVP pages", () => {
   it("quick-adds a task with estimate and an explicit due date", async () => {
     const repository = fakeRepository();
 
-    renderWithRepository(<Today />, repository);
+    renderWithRepository(Today, repository);
 
     await screen.findByText("Due today");
-    await userEvent.type(screen.getByLabelText("Quick add task"), "Deep work");
-    fireEvent.change(screen.getByLabelText("Task due date"), {
-      target: { value: "2026-05-18T09:30" },
-    });
-    await userEvent.type(screen.getByLabelText("Task estimate minutes"), "45");
-    await userEvent.click(screen.getByRole("button", { name: "Add for today" }));
+    await fireEvent.update(screen.getByLabelText("Quick add task"), "Deep work");
+    await fireEvent.update(screen.getByLabelText("Task due date"), "2026-05-18T09:30");
+    await fireEvent.update(screen.getByLabelText("Task estimate minutes"), "45");
+    await fireEvent.click(screen.getByRole("button", { name: "Add for today" }));
 
     expect(repository.createTask).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -97,18 +96,18 @@ describe("desktop MVP pages", () => {
       inbox: [task({ id: "inbox-1", title: "Inbox task" })],
     });
 
-    renderWithRepository(<Inbox />, repository);
+    renderWithRepository(Inbox, repository);
 
     const item = await screen.findByText("Inbox task");
     const row = item.closest("li");
     expect(row).not.toBeNull();
 
-    await userEvent.click(
+    await fireEvent.click(
       within(row as HTMLElement).getByRole("button", {
         name: "Complete Inbox task",
       }),
     );
-    await userEvent.click(
+    await fireEvent.click(
       within(row as HTMLElement).getByRole("button", {
         name: "Delete Inbox task",
       }),
@@ -123,23 +122,21 @@ describe("desktop MVP pages", () => {
       inbox: [task({ id: "inbox-1", title: "Inbox task", notes: "old", priority: 0 })],
     });
 
-    renderWithRepository(<Inbox />, repository);
+    renderWithRepository(Inbox, repository);
 
     const item = await screen.findByText("Inbox task");
     const row = item.closest("li");
     expect(row).not.toBeNull();
 
-    await userEvent.click(
+    await fireEvent.click(
       within(row as HTMLElement).getByRole("button", {
         name: "Edit Inbox task",
       }),
     );
-    await userEvent.clear(screen.getByLabelText("Edit Inbox task title"));
-    await userEvent.type(screen.getByLabelText("Edit Inbox task title"), "Updated task");
-    await userEvent.clear(screen.getByLabelText("Edit Inbox task notes"));
-    await userEvent.type(screen.getByLabelText("Edit Inbox task notes"), "Deeper detail");
-    await userEvent.selectOptions(screen.getByLabelText("Edit Inbox task priority"), "2");
-    await userEvent.click(screen.getByRole("button", { name: "Save Inbox task" }));
+    await fireEvent.update(screen.getByLabelText("Edit Inbox task title"), "Updated task");
+    await fireEvent.update(screen.getByLabelText("Edit Inbox task notes"), "Deeper detail");
+    await fireEvent.update(screen.getByLabelText("Edit Inbox task priority"), "2");
+    await fireEvent.click(screen.getByRole("button", { name: "Save Inbox task" }));
 
     expect(repository.updateTask).toHaveBeenCalledWith("inbox-1", {
       title: "Updated task",
@@ -153,22 +150,20 @@ describe("desktop MVP pages", () => {
       inbox: [task({ id: "inbox-1", title: "Inbox task" })],
     });
 
-    renderWithRepository(<Inbox />, repository);
+    renderWithRepository(Inbox, repository);
 
     const item = await screen.findByText("Inbox task");
     const row = item.closest("li");
     expect(row).not.toBeNull();
 
-    await userEvent.click(
+    await fireEvent.click(
       within(row as HTMLElement).getByRole("button", {
         name: "Edit Inbox task",
       }),
     );
-    fireEvent.change(screen.getByLabelText("Edit Inbox task due date"), {
-      target: { value: "2026-05-19T14:15" },
-    });
-    await userEvent.type(screen.getByLabelText("Edit Inbox task estimate minutes"), "30");
-    await userEvent.click(screen.getByRole("button", { name: "Save Inbox task" }));
+    await fireEvent.update(screen.getByLabelText("Edit Inbox task due date"), "2026-05-19T14:15");
+    await fireEvent.update(screen.getByLabelText("Edit Inbox task estimate minutes"), "30");
+    await fireEvent.click(screen.getByRole("button", { name: "Save Inbox task" }));
 
     expect(repository.updateTask).toHaveBeenCalledWith("inbox-1", {
       title: "Inbox task",
@@ -191,24 +186,20 @@ describe("desktop MVP pages", () => {
       ],
     });
 
-    renderWithRepository(<Inbox />, repository);
+    renderWithRepository(Inbox, repository);
 
     const item = await screen.findByText("Inbox task");
     const row = item.closest("li");
     expect(row).not.toBeNull();
 
-    await userEvent.click(
+    await fireEvent.click(
       within(row as HTMLElement).getByRole("button", {
         name: "Edit Inbox task",
       }),
     );
-    fireEvent.change(screen.getByLabelText("Edit Inbox task due date"), {
-      target: { value: "" },
-    });
-    fireEvent.change(screen.getByLabelText("Edit Inbox task estimate minutes"), {
-      target: { value: "" },
-    });
-    await userEvent.click(screen.getByRole("button", { name: "Save Inbox task" }));
+    await fireEvent.update(screen.getByLabelText("Edit Inbox task due date"), "");
+    await fireEvent.update(screen.getByLabelText("Edit Inbox task estimate minutes"), "");
+    await fireEvent.click(screen.getByRole("button", { name: "Save Inbox task" }));
 
     expect(repository.updateTask).toHaveBeenCalledWith("inbox-1", {
       title: "Inbox task",
@@ -225,10 +216,10 @@ describe("desktop MVP pages", () => {
       .mockRejectedValueOnce(new Error("database locked"))
       .mockResolvedValueOnce([task({ id: "inbox-1", title: "Recovered task" })]);
 
-    renderWithRepository(<Inbox />, repository);
+    renderWithRepository(Inbox, repository);
 
     expect(await screen.findByText("Error: database locked")).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: "Retry" }));
+    await fireEvent.click(screen.getByRole("button", { name: "Retry" }));
 
     expect(await screen.findByText("Recovered task")).toBeInTheDocument();
   });
@@ -244,7 +235,7 @@ describe("desktop MVP pages", () => {
       ],
     });
 
-    renderWithRepository(<Calendar />, repository);
+    renderWithRepository(Calendar, repository);
 
     expect(await screen.findByText("Planning session")).toBeInTheDocument();
     expect(screen.getByText("Next 7 days")).toBeInTheDocument();
@@ -263,10 +254,10 @@ describe("desktop MVP pages", () => {
         }),
       ]);
 
-    renderWithRepository(<Calendar />, repository);
+    renderWithRepository(Calendar, repository);
 
     expect(await screen.findByText("Error: agenda unavailable")).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: "Retry" }));
+    await fireEvent.click(screen.getByRole("button", { name: "Retry" }));
 
     expect(await screen.findByText("Recovered agenda")).toBeInTheDocument();
   });
@@ -282,7 +273,7 @@ describe("desktop MVP pages", () => {
       },
     });
 
-    renderWithRepository(<Settings />, repository);
+    renderWithRepository(Settings, repository);
 
     expect(await screen.findByText("sqlite:momo.db")).toBeInTheDocument();
     expect(screen.getByText("4")).toBeInTheDocument();
@@ -303,7 +294,7 @@ describe("desktop MVP pages", () => {
       },
     });
 
-    renderWithRepository(<Settings />, repository);
+    renderWithRepository(Settings, repository);
 
     expect(await screen.findByText("Sync state")).toBeInTheDocument();
     expect(screen.getByText("cursor-7")).toBeInTheDocument();
@@ -318,10 +309,9 @@ describe("desktop MVP pages", () => {
       reason: "Remote sync base URL is not configured",
     };
 
-    renderWithRepository(
-      <Settings remoteSyncConfig={remoteSyncConfig} />,
-      repository,
-    );
+    renderWithRepository(Settings, repository, {
+      props: { remoteSyncConfig },
+    });
 
     expect(await screen.findByText("Remote sync config")).toBeInTheDocument();
     expect(screen.getByText("disabled")).toBeInTheDocument();
@@ -336,10 +326,9 @@ describe("desktop MVP pages", () => {
       headers: async () => ({ authorization: "Bearer secret-token" }),
     };
 
-    renderWithRepository(
-      <Settings remoteSyncConfig={remoteSyncConfig} />,
-      repository,
-    );
+    renderWithRepository(Settings, repository, {
+      props: { remoteSyncConfig },
+    });
 
     expect(await screen.findByText("Remote sync config")).toBeInTheDocument();
     expect(screen.getByText("enabled")).toBeInTheDocument();
@@ -363,7 +352,9 @@ describe("desktop MVP pages", () => {
       },
     ];
 
-    renderWithRepository(<Settings pendingConflicts={conflicts} />, repository);
+    renderWithRepository(Settings, repository, {
+      props: { pendingConflicts: conflicts },
+    });
 
     expect(await screen.findByText("Sync conflicts")).toBeInTheDocument();
     const conflictRow = screen.getByText("Server title").closest("li");
@@ -386,7 +377,9 @@ describe("desktop MVP pages", () => {
       serverCursor: "cursor-4",
     };
 
-    renderWithRepository(<Settings syncSummary={syncSummary} />, repository);
+    renderWithRepository(Settings, repository, {
+      props: { syncSummary },
+    });
 
     expect(await screen.findByText("Sync status")).toBeInTheDocument();
     expect(screen.getByText("1 local change needs retry or repair")).toBeInTheDocument();
@@ -431,12 +424,11 @@ describe("desktop MVP pages", () => {
       pendingConflicts: [],
     } satisfies LocalSyncSimulationResult);
 
-    renderWithRepository(
-      <Settings onRunLocalSyncSimulation={onRunLocalSyncSimulation} />,
-      repository,
-    );
+    renderWithRepository(Settings, repository, {
+      props: { onRunLocalSyncSimulation },
+    });
 
-    await userEvent.click(
+    await fireEvent.click(
       await screen.findByRole("button", { name: "Run local sync simulation" }),
     );
 
@@ -452,12 +444,11 @@ describe("desktop MVP pages", () => {
       .fn()
       .mockRejectedValue(new Error("simulation unavailable"));
 
-    renderWithRepository(
-      <Settings onRunLocalSyncSimulation={onRunLocalSyncSimulation} />,
-      repository,
-    );
+    renderWithRepository(Settings, repository, {
+      props: { onRunLocalSyncSimulation },
+    });
 
-    await userEvent.click(
+    await fireEvent.click(
       await screen.findByRole("button", { name: "Run local sync simulation" }),
     );
 
@@ -495,12 +486,11 @@ describe("desktop MVP pages", () => {
       },
     };
 
-    renderWithRepository(
-      <Settings onRunLocalSyncSimulation={vi.fn().mockResolvedValue(runnerResult)} />,
-      repository,
-    );
+    renderWithRepository(Settings, repository, {
+      props: { onRunLocalSyncSimulation: vi.fn().mockResolvedValue(runnerResult) },
+    });
 
-    await userEvent.click(
+    await fireEvent.click(
       await screen.findByRole("button", { name: "Run local sync simulation" }),
     );
 
@@ -544,12 +534,11 @@ describe("desktop MVP pages", () => {
       },
     };
 
-    renderWithRepository(
-      <Settings onRunLocalSyncSimulation={vi.fn().mockResolvedValue(runnerResult)} />,
-      repository,
-    );
+    renderWithRepository(Settings, repository, {
+      props: { onRunLocalSyncSimulation: vi.fn().mockResolvedValue(runnerResult) },
+    });
 
-    await userEvent.click(
+    await fireEvent.click(
       await screen.findByRole("button", { name: "Run local sync simulation" }),
     );
 
@@ -627,13 +616,12 @@ describe("desktop MVP pages", () => {
       },
     };
 
-    renderWithRepository(
-      <Settings onRunLocalSyncSimulation={vi.fn().mockResolvedValue(runnerResult)} />,
-      repository,
-    );
+    renderWithRepository(Settings, repository, {
+      props: { onRunLocalSyncSimulation: vi.fn().mockResolvedValue(runnerResult) },
+    });
 
     expect(await screen.findByText("cursor-before")).toBeInTheDocument();
-    await userEvent.click(
+    await fireEvent.click(
       await screen.findByRole("button", { name: "Run local sync simulation" }),
     );
 
@@ -659,12 +647,11 @@ describe("desktop MVP pages", () => {
       result: null,
     };
 
-    renderWithRepository(
-      <Settings onRunLocalSyncSimulation={vi.fn().mockResolvedValue(runnerResult)} />,
-      repository,
-    );
+    renderWithRepository(Settings, repository, {
+      props: { onRunLocalSyncSimulation: vi.fn().mockResolvedValue(runnerResult) },
+    });
 
-    await userEvent.click(
+    await fireEvent.click(
       await screen.findByRole("button", { name: "Run local sync simulation" }),
     );
 
@@ -692,19 +679,19 @@ describe("desktop MVP pages", () => {
       result: null,
     };
 
-    renderWithRepository(
-      <Settings onRunLocalSyncSimulation={vi.fn().mockResolvedValue(runnerResult)} />,
-      repository,
-    );
+    renderWithRepository(Settings, repository, {
+      props: { onRunLocalSyncSimulation: vi.fn().mockResolvedValue(runnerResult) },
+    });
 
     expect(await screen.findByText("cursor-before")).toBeInTheDocument();
-    await userEvent.click(
+    await fireEvent.click(
       await screen.findByRole("button", { name: "Run local sync simulation" }),
     );
 
     expect(
       await screen.findByText("Error: HTTP-like sync transport failed"),
     ).toBeInTheDocument();
+    expect(await screen.findByText("none")).toBeInTheDocument();
     const serverCursorRow = screen.getByText("Server cursor").closest("li");
     const lastErrorRow = screen.getByText("Last error").closest("li");
     expect(repository.getSyncState).toHaveBeenCalledTimes(2);
@@ -717,17 +704,23 @@ describe("desktop MVP pages", () => {
   it("shows the local sync simulation entrypoint on the default settings route", async () => {
     const repository = fakeRepository();
 
-    render(
-      <TaskRepositoryProvider repository={repository}>
-        <MemoryRouter initialEntries={["/settings"]}>
-          <App />
-        </MemoryRouter>
-      </TaskRepositoryProvider>,
-    );
+    await renderAppAt("/settings", repository);
 
+    expect(screen.getByRole("button", { name: "Open widget" })).toBeInTheDocument();
     expect(
       await screen.findByRole("button", { name: "Run local sync simulation" }),
     ).toBeInTheDocument();
+  });
+
+  it("keeps the login placeholder route wired into the Vue router", async () => {
+    const repository = fakeRepository();
+
+    await renderAppAt("/login", repository);
+
+    await fireEvent.update(screen.getByLabelText("Email"), "you@example.com");
+    await fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+
+    expect(await screen.findByText("Due today")).toBeInTheDocument();
   });
 
   it("passes remote sync env config into the default settings route", async () => {
@@ -735,13 +728,7 @@ describe("desktop MVP pages", () => {
     vi.stubEnv("VITE_MOMO_SYNC_TOKEN", "secret-token");
     const repository = fakeRepository();
 
-    render(
-      <TaskRepositoryProvider repository={repository}>
-        <MemoryRouter initialEntries={["/settings"]}>
-          <App />
-        </MemoryRouter>
-      </TaskRepositoryProvider>,
-    );
+    await renderAppAt("/settings", repository);
 
     expect(await screen.findByText("Remote sync config")).toBeInTheDocument();
     expect(screen.getByText("enabled")).toBeInTheDocument();
@@ -765,10 +752,10 @@ describe("desktop MVP pages", () => {
         pendingLocalChanges: 1,
       });
 
-    renderWithRepository(<Settings />, repository);
+    renderWithRepository(Settings, repository);
 
     expect(await screen.findByText("Error: stats unavailable")).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: "Retry" }));
+    await fireEvent.click(screen.getByRole("button", { name: "Retry" }));
 
     expect(await screen.findByText("sqlite:momo.db")).toBeInTheDocument();
     expect(screen.getByText("5")).toBeInTheDocument();
@@ -783,18 +770,40 @@ describe("desktop MVP pages", () => {
       },
     });
 
-    renderWithRepository(<Widget />, repository);
+    renderWithRepository(Widget, repository);
 
     expect(await screen.findByText("Momo Widget")).toBeInTheDocument();
-    expect(screen.getByText("Late invoice")).toBeInTheDocument();
+    expect(await screen.findByText("Late invoice")).toBeInTheDocument();
     expect(screen.getByText("Focus block")).toBeInTheDocument();
   });
 });
 
-function renderWithRepository(ui: React.ReactElement, repository: TaskRepository) {
-  return render(
-    <TaskRepositoryProvider repository={repository}>{ui}</TaskRepositoryProvider>,
-  );
+function renderWithRepository(
+  component: Component,
+  repository: TaskRepository,
+  options: Record<string, unknown> = {},
+) {
+  return render(component, {
+    ...options,
+    global: {
+      provide: {
+        [TaskRepositoryKey as symbol]: repository,
+      },
+      ...(options.global as Record<string, unknown> | undefined),
+    },
+  });
+}
+
+async function renderAppAt(path: string, repository: TaskRepository) {
+  const router = createMomoRouter(createMemoryHistory());
+  await router.push(path);
+  await router.isReady();
+
+  return renderWithRepository(App, repository, {
+    global: {
+      plugins: [router],
+    },
+  });
 }
 
 function fakeRepository(overrides: {
@@ -834,6 +843,8 @@ function fakeRepository(overrides: {
     updateTask: vi.fn(),
     setStatus: vi.fn().mockResolvedValue(task({ status: "completed" })),
     deleteTask: vi.fn().mockResolvedValue(undefined),
+    applyRemoteTask: vi.fn().mockResolvedValue(undefined),
+    deleteRemoteTask: vi.fn().mockResolvedValue(undefined),
     listToday: vi.fn().mockResolvedValue(today),
     listInbox: vi.fn().mockResolvedValue(overrides.inbox ?? []),
     listAgenda: vi.fn().mockResolvedValue(overrides.agenda ?? []),

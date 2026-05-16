@@ -11,6 +11,7 @@ describe("desktop README", () => {
     );
     const readme = readFileSync(readmePath, "utf-8");
 
+    expect(readme).toContain("Tauri 2 + Vue 3 + TypeScript");
     expect(readme).toContain("Pending sync");
     expect(readme).toContain("sync_state");
     expect(readme).toContain("getSyncState");
