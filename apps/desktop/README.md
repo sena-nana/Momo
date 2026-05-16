@@ -58,7 +58,8 @@ npm install
 - `applyDeltaPullResponse()` 会把 delta pull 结果应用到本地 SQLite：`applyRemoteTask()` upsert 远端任务，`deleteRemoteTask()` 删除远端已删除任务，并更新 `sync_state.serverCursor`。
 - 远端 pull 应用不会记录本地变更：`applyRemoteTask()` / `deleteRemoteTask()` 会修改 `tasks`，但 without writing `local_changes`。
 - `runLocalSyncSimulation()` 可用注入的内存 sync API 串起 pending changes、delta push、accepted 标记与 pending conflict 摘要，用于本地端到端演练；返回值包含 `pendingConflictCount`。
-- `createLocalSyncRunner()` 使用 in-memory transport 包装本地 `createSyncApi()`，并已接到 default Settings route，作为当前 local simulation entrypoint 让 `/settings` 中的演示按钮在实际桌面壳里可见。
+- `createHttpLikeSyncTransport()` 是当前 HTTP-like sync transport boundary：把 `deltaPush()` / `deltaPull()` / `listConflicts()` 映射到 API router 的 `/sync/delta/push`、`/sync/delta/pull` 与 `/sync/conflicts`。
+- `createLocalSyncRunner()` 使用 in-memory API router + HTTP-like sync transport 包装本地 `createSyncApi()`，并已接到 default Settings route，作为当前 local simulation entrypoint 让 `/settings` 中的演示按钮在实际桌面壳里可见。
 - `createSyncRunner()` 是桌面端 sync runner boundary；`runOnce()` 接收注入的 `transport`、workspace/device 与 clock，负责编排一次同步并把 transport 错误归一成可展示结果。
 - 当 transport 提供 `deltaPull()` 时，`runOnce()` runs delta pull after delta push：读取 `sync_state.serverCursor` 作为 `sinceCursor`，拉取并应用远端变化。
 - runner 成功时会通过 `saveSyncState()` 保存 server cursor / last synced 并 clears last error；失败时会 records last error。
@@ -91,7 +92,7 @@ npm install
 
 - 已建立 `delta pull application boundary`，可以把服务端返回的 delta pull 结果 apply pulled tasks into local SQLite。
 - 该边界应复用 `sync_state.serverCursor` 作为 pull 起点，并在应用完成后写回新 cursor。
-- 下一步建议把 Settings 的展示摘要扩展到 pull 结果；real HTTP transport remains later，当前仍先保持 in-memory transport 和 HTTP-like router 语义验证。
+- 下一步建议围绕 HTTP-like sync transport 增加本地错误可见性或真实 HTTP transport contract；real HTTP transport remains later，当前仍先保持 in-memory transport 和 HTTP-like router 语义验证。
 
 ## 当前限制
 

@@ -1,9 +1,14 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  createApiRouter,
   createInMemorySyncStore,
+  createInMemoryTaskRepository,
   createSyncApi,
+  createTaskService,
 } from "../../../apps/api/src";
+import * as apiModule from "../../../apps/api/src";
 import {
+  createDeltaPushRequest,
   SYNC_CONTRACT_VERSION,
   type DeltaPushResponse,
   type DeltaPullResponse,
@@ -21,6 +26,8 @@ import {
   summarizePendingConflicts,
   type ApplyDeltaPushResult,
 } from "../src/sync/syncClient";
+import { createHttpLikeSyncTransport } from "../src/sync/httpLikeSyncTransport";
+import { createLocalSyncRunner } from "../src/sync/localSyncRunner";
 
 describe("desktop sync client adapter", () => {
   it("exports the stable sync run status list", () => {
@@ -147,6 +154,196 @@ describe("desktop sync client adapter", () => {
       "change-1",
       new Date("2026-05-16T12:01:00.000Z"),
     );
+  });
+
+  it("adapts sync runner transport calls to HTTP-like API router routes", async () => {
+    const router = createApiRouter({
+      taskService: createTaskService({
+        repository: createInMemoryTaskRepository(),
+        now: () => new Date("2026-05-16T12:00:00.000Z"),
+        id: () => "task-1",
+      }),
+      syncApi: createSyncApi({
+        store: createInMemorySyncStore(),
+        now: () => new Date("2026-05-16T12:00:00.000Z"),
+      }),
+    });
+    const transport = createHttpLikeSyncTransport({ router });
+    const pushRequest = createDeltaPushRequest({
+      workspaceId: "local",
+      deviceId: "desktop-1",
+      changes: [
+        {
+          id: "change-1",
+          entityType: "task",
+          entityId: "task-1",
+          action: "task.create",
+          payload: {
+            id: "task-1",
+            title: "Transport task",
+            notes: null,
+            status: "active",
+            priority: 0,
+            dueAt: null,
+            estimateMin: null,
+            tags: [],
+            createdAt: "2026-05-16T10:00:00.000Z",
+            updatedAt: "2026-05-16T10:00:00.000Z",
+            completedAt: null,
+          },
+          createdAt: "2026-05-16T10:00:00.000Z",
+        },
+      ],
+      now: new Date("2026-05-16T10:01:00.000Z"),
+    });
+
+    await expect(transport.deltaPush(pushRequest)).resolves.toMatchObject({
+      acceptedChangeIds: ["change-1"],
+      serverCursor: "cursor-1",
+    });
+    await expect(
+      transport.deltaPull({
+        contractVersion: SYNC_CONTRACT_VERSION,
+        workspaceId: "local",
+        deviceId: "desktop-1",
+        sinceCursor: null,
+      }),
+    ).resolves.toMatchObject({
+      tasks: [{ id: "task-1", title: "Transport task" }],
+      serverCursor: "cursor-1",
+    });
+    await expect(
+      transport.listConflicts({
+        contractVersion: SYNC_CONTRACT_VERSION,
+        workspaceId: "local",
+        deviceId: "desktop-1",
+      }),
+    ).resolves.toMatchObject({
+      conflicts: [],
+      serverCursor: "cursor-1",
+    });
+  });
+
+  it("surfaces HTTP-like sync transport route errors as thrown errors", async () => {
+    const router = {
+      handle: vi.fn().mockResolvedValue({
+        status: 400,
+        body: { error: "Unsupported sync contract version" },
+      }),
+    };
+    const transport = createHttpLikeSyncTransport({ router });
+
+    await expect(
+      transport.deltaPull({
+        contractVersion: 1,
+        workspaceId: "local",
+        deviceId: "desktop-1",
+        sinceCursor: null,
+      }),
+    ).rejects.toThrow("Unsupported sync contract version");
+    expect(router.handle).toHaveBeenCalledWith({
+      method: "POST",
+      path: "/sync/delta/pull",
+      body: {
+        contractVersion: 1,
+        workspaceId: "local",
+        deviceId: "desktop-1",
+        sinceCursor: null,
+      },
+    });
+  });
+
+  it("creates the default local sync runner through the HTTP-like API router boundary", async () => {
+    const repository = {
+      listPendingChanges: vi.fn().mockResolvedValue([]),
+      markChangeSynced: vi.fn().mockResolvedValue(undefined),
+      getSyncState: vi.fn().mockResolvedValue({
+        serverCursor: null,
+        lastSyncedAt: null,
+        lastError: null,
+        updatedAt: null,
+      }),
+      applyRemoteTask: vi.fn().mockResolvedValue(undefined),
+      deleteRemoteTask: vi.fn().mockResolvedValue(undefined),
+      saveSyncState: vi.fn().mockResolvedValue({
+        serverCursor: "cursor-0",
+        lastSyncedAt: "2026-05-16T12:00:00.000Z",
+        lastError: null,
+        updatedAt: "2026-05-16T12:00:00.000Z",
+      }),
+    } as unknown as TaskRepository;
+    const handle = vi.fn().mockImplementation(async (request) => {
+      if (request.path === "/sync/delta/push") {
+        return {
+          status: 200,
+          body: {
+            contractVersion: SYNC_CONTRACT_VERSION,
+            acceptedChangeIds: [],
+            rejectedChanges: [],
+            conflicts: [],
+            serverCursor: "cursor-0",
+            serverTime: "2026-05-16T12:00:00.000Z",
+          },
+        };
+      }
+      if (request.path === "/sync/delta/pull") {
+        return {
+          status: 200,
+          body: {
+            contractVersion: SYNC_CONTRACT_VERSION,
+            tasks: [],
+            deletedTaskIds: [],
+            serverCursor: "cursor-0",
+            serverTime: "2026-05-16T12:00:00.000Z",
+          },
+        };
+      }
+      return {
+        status: 200,
+        body: {
+          contractVersion: SYNC_CONTRACT_VERSION,
+          conflicts: [],
+          serverCursor: "cursor-0",
+          serverTime: "2026-05-16T12:00:00.000Z",
+        },
+      };
+    });
+    const createApiRouterSpy = vi
+      .spyOn(apiModule, "createApiRouter")
+      .mockReturnValue({ handle });
+
+    const runner = createLocalSyncRunner(repository);
+    await expect(runner.runOnce()).resolves.toMatchObject({
+      ok: true,
+      result: {
+        pull: {
+          appliedTaskCount: 0,
+          deletedTaskCount: 0,
+          serverCursor: "cursor-0",
+        },
+      },
+    });
+
+    expect(createApiRouterSpy).toHaveBeenCalledTimes(1);
+    expect(handle).toHaveBeenCalledWith(
+      expect.objectContaining({
+        method: "POST",
+        path: "/sync/delta/push",
+      }),
+    );
+    expect(handle).toHaveBeenCalledWith(
+      expect.objectContaining({
+        method: "GET",
+        path: "/sync/conflicts",
+      }),
+    );
+    expect(handle).toHaveBeenCalledWith(
+      expect.objectContaining({
+        method: "POST",
+        path: "/sync/delta/pull",
+      }),
+    );
+    createApiRouterSpy.mockRestore();
   });
 
   it("returns conflict summaries from a local sync simulation without marking the conflicting change synced", async () => {

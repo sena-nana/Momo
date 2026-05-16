@@ -26,6 +26,8 @@ describe("desktop README", () => {
     expect(readme).toContain("default Settings route");
     expect(readme).toContain("in-memory transport");
     expect(readme).toContain("createSyncRunner");
+    expect(readme).toContain("createHttpLikeSyncTransport");
+    expect(readme).toContain("HTTP-like sync transport");
     expect(readme).toContain("runOnce");
     expect(readme).toContain("runs delta pull after delta push");
     expect(readme).toContain("sinceCursor");
