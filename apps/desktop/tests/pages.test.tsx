@@ -15,6 +15,7 @@ import type {
   SyncRunnerRunOnceResult,
   SyncRunSummary,
 } from "../src/sync/syncClient";
+import type { RemoteSyncConfig } from "../src/sync/remoteSyncConfig";
 import Today from "../src/pages/Today";
 import Inbox from "../src/pages/Inbox";
 import Calendar from "../src/pages/Calendar";
@@ -308,6 +309,43 @@ describe("desktop MVP pages", () => {
     expect(screen.getByText("cursor-7")).toBeInTheDocument();
     expect(screen.getByText("2026-05-16T12:00:00.000Z")).toBeInTheDocument();
     expect(screen.getByText("previous sync failure")).toBeInTheDocument();
+  });
+
+  it("shows disabled remote sync configuration in settings", async () => {
+    const repository = fakeRepository();
+    const remoteSyncConfig: RemoteSyncConfig = {
+      enabled: false,
+      reason: "Remote sync base URL is not configured",
+    };
+
+    renderWithRepository(
+      <Settings remoteSyncConfig={remoteSyncConfig} />,
+      repository,
+    );
+
+    expect(await screen.findByText("Remote sync config")).toBeInTheDocument();
+    expect(screen.getByText("disabled")).toBeInTheDocument();
+    expect(screen.getByText("Remote sync base URL is not configured")).toBeInTheDocument();
+  });
+
+  it("shows enabled remote sync configuration without exposing tokens in settings", async () => {
+    const repository = fakeRepository();
+    const remoteSyncConfig: RemoteSyncConfig = {
+      enabled: true,
+      baseUrl: "https://api.example.test/momo",
+      headers: async () => ({ authorization: "Bearer secret-token" }),
+    };
+
+    renderWithRepository(
+      <Settings remoteSyncConfig={remoteSyncConfig} />,
+      repository,
+    );
+
+    expect(await screen.findByText("Remote sync config")).toBeInTheDocument();
+    expect(screen.getByText("enabled")).toBeInTheDocument();
+    expect(screen.getByText("https://api.example.test/momo")).toBeInTheDocument();
+    expect(screen.getByText("Configured")).toBeInTheDocument();
+    expect(screen.queryByText("secret-token")).not.toBeInTheDocument();
   });
 
   it("shows read-only pending sync conflict summaries in settings", async () => {

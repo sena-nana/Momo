@@ -8,9 +8,11 @@ import type {
   SyncRunnerRunOnceResult,
   SyncRunSummary,
 } from "../sync/syncClient";
+import type { RemoteSyncConfig } from "../sync/remoteSyncConfig";
 
 interface SettingsProps {
   pendingConflicts?: PendingConflictSummary[];
+  remoteSyncConfig?: RemoteSyncConfig;
   syncSummary?: SyncRunSummary | null;
   onRunLocalSyncSimulation?: () => Promise<
     LocalSyncSimulationResult | SyncRunnerRunOnceResult
@@ -19,6 +21,10 @@ interface SettingsProps {
 
 export default function Settings({
   pendingConflicts = [],
+  remoteSyncConfig = {
+    enabled: false,
+    reason: "Remote sync base URL is not configured",
+  },
   syncSummary = null,
   onRunLocalSyncSimulation,
 }: SettingsProps) {
@@ -144,6 +150,23 @@ export default function Settings({
           </ul>
         </div>
       )}
+
+      <div className="card">
+        <div className="section-title">
+          <h2>Remote sync config</h2>
+          <span className="pill">{remoteSyncConfig.enabled ? "enabled" : "disabled"}</span>
+        </div>
+        <ul className="kv">
+          {remoteSyncConfig.enabled ? (
+            <>
+              <li><span>Base URL</span><b>{remoteSyncConfig.baseUrl}</b></li>
+              <li><span>Auth token</span><b>Configured</b></li>
+            </>
+          ) : (
+            <li><span>Reason</span><b>{remoteSyncConfig.reason}</b></li>
+          )}
+        </ul>
+      </div>
 
       {onRunLocalSyncSimulation && (
         <div className="card">
