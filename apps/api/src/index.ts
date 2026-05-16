@@ -10,6 +10,7 @@ import {
 } from "../../../packages/contracts/src";
 
 export * from "./tasks";
+export * from "./router";
 
 export interface SyncApi {
   deltaPush(request: DeltaPushRequest): Promise<DeltaPushResponse>;
