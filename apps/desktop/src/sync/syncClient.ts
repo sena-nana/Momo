@@ -1,6 +1,9 @@
 import {
+  createListTaskConflictsRequest,
   createDeltaPushRequest,
   type DeltaPushResponse,
+  type DeltaPushRequest,
+  type ListTaskConflictsResponse,
   type LocalChangeDto,
   type TaskConflictDto,
 } from "../../../../packages/contracts/src";
@@ -27,6 +30,59 @@ export async function buildDeltaPushFromPendingChanges({
     changes: changes.map(toLocalChangeDto),
     now,
   });
+}
+
+export interface LocalSyncSimulationApi {
+  deltaPush(request: DeltaPushRequest): Promise<DeltaPushResponse>;
+  listConflicts(request: {
+    contractVersion: 1;
+    workspaceId: string;
+    deviceId: string;
+  }): Promise<ListTaskConflictsResponse>;
+}
+
+export interface RunLocalSyncSimulationOptions {
+  repository: Pick<TaskRepository, "listPendingChanges" | "markChangeSynced">;
+  syncApi: LocalSyncSimulationApi;
+  workspaceId: string;
+  deviceId: string;
+  now: Date;
+}
+
+export interface LocalSyncSimulationResult {
+  request: DeltaPushRequest;
+  push: ApplyDeltaPushResult;
+  pendingConflicts: PendingConflictSummary[];
+}
+
+export async function runLocalSyncSimulation({
+  repository,
+  syncApi,
+  workspaceId,
+  deviceId,
+  now,
+}: RunLocalSyncSimulationOptions): Promise<LocalSyncSimulationResult> {
+  const request = await buildDeltaPushFromPendingChanges({
+    repository,
+    workspaceId,
+    deviceId,
+    now,
+  });
+  const response = await syncApi.deltaPush(request);
+  const push = await applyDeltaPushResponse({
+    repository,
+    response,
+    syncedAt: now,
+  });
+  const conflicts = await syncApi.listConflicts(
+    createListTaskConflictsRequest({ workspaceId, deviceId }),
+  );
+
+  return {
+    request,
+    push,
+    pendingConflicts: summarizePendingConflicts(conflicts.conflicts),
+  };
 }
 
 export interface ApplyDeltaPushResponseOptions {

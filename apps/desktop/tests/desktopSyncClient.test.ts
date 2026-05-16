@@ -1,5 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  createInMemorySyncStore,
+  createSyncApi,
+} from "../../../apps/api/src";
+import {
   SYNC_CONTRACT_VERSION,
   type DeltaPushResponse,
   type TaskConflictDto,
@@ -9,6 +13,7 @@ import {
   SYNC_RUN_STATUSES,
   applyDeltaPushResponse,
   buildDeltaPushFromPendingChanges,
+  runLocalSyncSimulation,
   summarizeDeltaPushResponse,
   summarizePendingConflicts,
   type ApplyDeltaPushResult,
@@ -77,6 +82,68 @@ describe("desktop sync client adapter", () => {
 
     expect(request.changes).toEqual([]);
     expect(repository.listPendingChanges).toHaveBeenCalledTimes(1);
+  });
+
+  it("runs a local sync simulation with the in-memory sync API", async () => {
+    const repository = {
+      listPendingChanges: vi.fn().mockResolvedValue([
+        {
+          id: "change-1",
+          entityType: "task",
+          entityId: "task-1",
+          action: "task.create",
+          payload: {
+            id: "task-1",
+            title: "Local simulated task",
+            notes: null,
+            status: "active",
+            priority: 0,
+            dueAt: null,
+            estimateMin: null,
+            tags: [],
+            createdAt: "2026-05-16T10:00:00.000Z",
+            updatedAt: "2026-05-16T10:00:00.000Z",
+            completedAt: null,
+          },
+          createdAt: "2026-05-16T10:00:00.000Z",
+          syncedAt: null,
+        },
+      ]),
+      markChangeSynced: vi.fn().mockResolvedValue(undefined),
+    } as unknown as TaskRepository;
+    const syncApi = createSyncApi({
+      store: createInMemorySyncStore(),
+      now: () => new Date("2026-05-16T12:00:00.000Z"),
+    });
+
+    await expect(
+      runLocalSyncSimulation({
+        repository,
+        syncApi,
+        workspaceId: "local",
+        deviceId: "desktop-1",
+        now: new Date("2026-05-16T12:01:00.000Z"),
+      }),
+    ).resolves.toMatchObject({
+      request: {
+        workspaceId: "local",
+        deviceId: "desktop-1",
+        changes: [{ id: "change-1" }],
+      },
+      push: {
+        acceptedChangeIds: ["change-1"],
+        summary: {
+          status: "all-synced",
+          message: "1 local change synced",
+          serverCursor: "cursor-1",
+        },
+      },
+      pendingConflicts: [],
+    });
+    expect(repository.markChangeSynced).toHaveBeenCalledWith(
+      "change-1",
+      new Date("2026-05-16T12:01:00.000Z"),
+    );
   });
 
   it("marks accepted changes as synced and returns unresolved sync results", async () => {
