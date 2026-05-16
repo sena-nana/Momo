@@ -39,6 +39,7 @@ describe("desktop README", () => {
     expect(readme).toContain("summarizePendingConflicts");
     expect(readme).toContain("Sync conflicts");
     expect(readme).toContain("Sync status");
+    expect(readme).toContain("Pull applied");
     expect(readme).toContain("Sync state");
     expect(readme).toContain("onRunLocalSyncSimulation");
     expect(readme).toContain("Local sync simulation");
@@ -50,6 +51,7 @@ describe("desktop README", () => {
     expect(readme).toContain("http://localhost:1420/settings");
     expect(readme).toContain("click `Local sync simulation`");
     expect(readme).toContain("confirm `Sync status`");
+    expect(readme).toContain("confirm `Pull applied`");
     expect(readme).toContain("confirm `Sync state`");
     expect(readme).toContain("Vite smoke only verifies the route, button, and error handling");
     expect(readme).toContain("Full SQLite success flow requires `npm run tauri dev`");

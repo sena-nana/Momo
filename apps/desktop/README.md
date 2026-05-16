@@ -67,6 +67,7 @@ npm install
 - `summarizePendingConflicts()` 可把待处理冲突映射成只读展示摘要，保留 conflict/task/change id、原因、server task 标题/版本与 client payload 摘要。
 - Settings 目前会在有冲突摘要时展示只读 `Sync conflicts` 列表占位，不提供解决按钮。
 - Settings 也支持注入只读 `Sync status` 摘要，用于展示最近一次同步运行结果、计数和 cursor。
+- Settings 在本地同步演示返回 pull 结果时会展示只读 `Pull applied` 摘要：applied tasks、deleted tasks 和 pull cursor。
 - Settings 会从本地 `sync_state` 读取并展示只读 `Sync state`，用于排查 cursor、最近同步时间和最近错误。
 - `sync_state` 是当前本地 `cursor state boundary`，仍只保存同步游标和错误状态，不承担任务合并。
 - Settings 可注入 `onRunLocalSyncSimulation` 显示 `Local sync simulation` 演示按钮；该按钮是 keyboard-accessible 的普通 button，只调用注入回调，不会自动连接真实网络。
@@ -81,6 +82,7 @@ npm install
 - Vite smoke only verifies the route, button, and error handling；普通浏览器没有 Tauri SQL `invoke`，因此会显示本地插件不可用错误。
 - Full SQLite success flow requires `npm run tauri dev`，在桌面壳中 click `Local sync simulation`。
 - confirm `Sync status` 显示 `Already synced` 或本地变更同步结果。
+- confirm `Pull applied` 显示 pull 应用的 applied / deleted / cursor 摘要。
 - confirm `Sync state` 中的 cursor / last synced / last error 状态可见。
 - 该检查使用 in-memory transport，no real network、账号、后台任务或生产同步。
 

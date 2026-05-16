@@ -33,6 +33,7 @@ export default function Settings({
   const [simulationError, setSimulationError] = useState<string | null>(null);
 
   const visibleSyncSummary = simulationResult?.push.summary ?? syncSummary;
+  const visiblePullSummary = simulationResult?.pull ?? null;
   const visibleConflicts = simulationResult?.pendingConflicts ?? pendingConflicts;
 
   async function load() {
@@ -190,6 +191,19 @@ export default function Settings({
             <li><span>Rejected</span><b>{visibleSyncSummary.rejectedCount}</b></li>
             <li><span>Conflicts</span><b>{visibleSyncSummary.conflictCount}</b></li>
             <li><span>Cursor</span><b>{visibleSyncSummary.serverCursor}</b></li>
+          </ul>
+        </div>
+      )}
+
+      {visiblePullSummary && (
+        <div className="card">
+          <div className="section-title">
+            <h2>Pull applied</h2>
+          </div>
+          <ul className="kv">
+            <li><span>Applied tasks</span><b>{visiblePullSummary.appliedTaskCount}</b></li>
+            <li><span>Deleted tasks</span><b>{visiblePullSummary.deletedTaskCount}</b></li>
+            <li><span>Pull cursor</span><b>{visiblePullSummary.serverCursor}</b></li>
           </ul>
         </div>
       )}

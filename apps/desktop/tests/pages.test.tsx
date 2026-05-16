@@ -470,6 +470,61 @@ describe("desktop MVP pages", () => {
     expect(screen.getByText("cursor-9")).toBeInTheDocument();
   });
 
+  it("shows a read-only delta pull summary after local sync simulation", async () => {
+    const repository = fakeRepository();
+    const runnerResult: SyncRunnerRunOnceResult = {
+      ok: true,
+      result: {
+        request: {
+          contractVersion: 1,
+          workspaceId: "local",
+          deviceId: "desktop-1",
+          changes: [],
+          clientSentAt: "2026-05-16T12:00:00.000Z",
+        },
+        push: {
+          acceptedChangeIds: [],
+          rejectedChanges: [],
+          conflicts: [],
+          serverCursor: "cursor-9",
+          summary: {
+            status: "all-synced",
+            message: "Already synced",
+            acceptedCount: 0,
+            rejectedCount: 0,
+            conflictCount: 0,
+            serverCursor: "cursor-9",
+          },
+        },
+        pull: {
+          appliedTaskCount: 2,
+          deletedTaskCount: 1,
+          serverCursor: "cursor-12",
+        },
+        pendingConflictCount: 0,
+        pendingConflicts: [],
+      },
+    };
+
+    renderWithRepository(
+      <Settings onRunLocalSyncSimulation={vi.fn().mockResolvedValue(runnerResult)} />,
+      repository,
+    );
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Run local sync simulation" }),
+    );
+
+    expect(await screen.findByText("Pull applied")).toBeInTheDocument();
+    const appliedRow = screen.getByText("Applied tasks").closest("li");
+    const deletedRow = screen.getByText("Deleted tasks").closest("li");
+    const cursorRow = screen.getByText("Pull cursor").closest("li");
+    expect(within(appliedRow as HTMLElement).getByText("2")).toBeInTheDocument();
+    expect(within(deletedRow as HTMLElement).getByText("1")).toBeInTheDocument();
+    expect(within(cursorRow as HTMLElement).getByText("cursor-12")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /pull/i })).not.toBeInTheDocument();
+  });
+
   it("shows sync runner errors from the settings simulation callback", async () => {
     const repository = fakeRepository();
     const runnerResult: SyncRunnerRunOnceResult = {
