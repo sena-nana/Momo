@@ -609,6 +609,40 @@ describe("desktop sync client adapter", () => {
     expect(transport.listConflicts).not.toHaveBeenCalled();
   });
 
+  it("keeps route and status transport errors visible when saving sync state fails", async () => {
+    const repository = {
+      listPendingChanges: vi.fn().mockResolvedValue([]),
+      markChangeSynced: vi.fn().mockResolvedValue(undefined),
+      saveSyncState: vi.fn().mockRejectedValue(new Error("sync_state locked")),
+    } as unknown as TaskRepository;
+    const transport = createHttpLikeSyncTransport({
+      router: {
+        handle: vi.fn().mockResolvedValue({
+          status: 400,
+          body: { error: "Unsupported sync contract version" },
+        }),
+      },
+    });
+    const runner = createSyncRunner({
+      repository,
+      transport,
+      workspaceId: "local",
+      deviceId: "desktop-1",
+      now: () => new Date("2026-05-16T12:01:00.000Z"),
+    });
+
+    await expect(runner.runOnce()).resolves.toEqual({
+      ok: false,
+      error: "POST /sync/delta/push failed with 400: Unsupported sync contract version",
+      result: null,
+    });
+    expect(repository.saveSyncState).toHaveBeenCalledWith({
+      serverCursor: null,
+      lastSyncedAt: null,
+      lastError: "POST /sync/delta/push failed with 400: Unsupported sync contract version",
+    });
+  });
+
   it("applies delta pull responses into local task storage and saves the cursor", async () => {
     const repository = {
       applyRemoteTask: vi.fn().mockResolvedValue(undefined),

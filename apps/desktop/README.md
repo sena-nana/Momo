@@ -64,6 +64,7 @@ npm install
 - `createSyncRunner()` 是桌面端 sync runner boundary；`runOnce()` 接收注入的 `transport`、workspace/device 与 clock，负责编排一次同步并把 transport 错误归一成可展示结果。
 - 当 transport 提供 `deltaPull()` 时，`runOnce()` runs delta pull after delta push：读取 `sync_state.serverCursor` 作为 `sinceCursor`，拉取并应用远端变化。
 - runner 成功时会通过 `saveSyncState()` 保存 server cursor / last synced 并 clears last error；失败时会 records last error。
+- 如果保存 `sync_state` 失败，runner 仍 does not hide the original sync error，页面会优先看到原始 transport / sync 失败原因。
 - rejected changes 与 conflicts 目前只作为摘要返回给调用方，不会自动重试、覆盖或解决冲突。
 - `SYNC_RUN_STATUSES` 固定导出同步运行状态列表；`summarizeDeltaPushResponse()` 会把一次 delta push 响应归纳成 `all-synced`、`has-rejections` 或 `has-conflicts` 状态文案；无变更时显示 `Already synced`。
 - `summarizePendingConflicts()` 可把待处理冲突映射成只读展示摘要，保留 conflict/task/change id、原因、server task 标题/版本与 client payload 摘要。

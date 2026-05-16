@@ -141,7 +141,7 @@ export function createSyncRunner({
         };
       } catch (e) {
         const error = getErrorMessage(e);
-        await repository.saveSyncState({
+        await saveSyncStateBestEffort(repository, {
           serverCursor: null,
           lastSyncedAt: null,
           lastError: error,
@@ -154,6 +154,17 @@ export function createSyncRunner({
       }
     },
   };
+}
+
+async function saveSyncStateBestEffort(
+  repository: Pick<TaskRepository, "saveSyncState">,
+  state: Parameters<TaskRepository["saveSyncState"]>[0],
+) {
+  try {
+    await repository.saveSyncState(state);
+  } catch {
+    // Keep the original sync failure visible to callers even if state persistence fails.
+  }
 }
 
 export async function runLocalSyncSimulation({
