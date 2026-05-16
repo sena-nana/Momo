@@ -7,6 +7,7 @@ import type {
   TaskRepository,
 } from "../src/data/taskRepository";
 import type { CreateTaskInput, Task, TodayTaskGroups } from "../src/domain/tasks";
+import type { PendingConflictSummary } from "../src/sync/syncClient";
 import Today from "../src/pages/Today";
 import Inbox from "../src/pages/Inbox";
 import Calendar from "../src/pages/Calendar";
@@ -281,6 +282,33 @@ describe("desktop MVP pages", () => {
     const pendingRow = screen.getByText("Pending sync").closest("li");
     expect(pendingRow).not.toBeNull();
     expect(within(pendingRow as HTMLElement).getByText("3")).toBeInTheDocument();
+  });
+
+  it("shows read-only pending sync conflict summaries in settings", async () => {
+    const repository = fakeRepository();
+    const conflicts: PendingConflictSummary[] = [
+      {
+        id: "conflict-1",
+        taskId: "task-1",
+        changeId: "change-4",
+        reason: "Task version conflict",
+        createdAt: "2026-05-16T12:01:00.000Z",
+        serverTaskTitle: "Server title",
+        serverTaskVersion: 5,
+        clientPayloadSummary: 'patch: {"title":"Local title"}',
+      },
+    ];
+
+    renderWithRepository(<Settings pendingConflicts={conflicts} />, repository);
+
+    expect(await screen.findByText("Sync conflicts")).toBeInTheDocument();
+    const conflictRow = screen.getByText("Server title").closest("li");
+    expect(conflictRow).not.toBeNull();
+    expect(within(conflictRow as HTMLElement).getByText("v5")).toBeInTheDocument();
+    expect(
+      within(conflictRow as HTMLElement).getByText('patch: {"title":"Local title"}'),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /resolve/i })).not.toBeInTheDocument();
   });
 
   it("recovers settings database status errors with retry", async () => {

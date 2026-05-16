@@ -2,8 +2,13 @@ import { useEffect, useState } from "react";
 import { Database, Loader2, RefreshCw } from "lucide-react";
 import { useTaskRepository } from "../data/TaskRepositoryContext";
 import type { DatabaseStats } from "../data/taskRepository";
+import type { PendingConflictSummary } from "../sync/syncClient";
 
-export default function Settings() {
+interface SettingsProps {
+  pendingConflicts?: PendingConflictSummary[];
+}
+
+export default function Settings({ pendingConflicts = [] }: SettingsProps) {
   const repository = useTaskRepository();
   const [stats, setStats] = useState<DatabaseStats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -71,6 +76,28 @@ export default function Settings() {
           </ul>
         )}
       </div>
+
+      {pendingConflicts.length > 0 && (
+        <div className="card">
+          <div className="section-title">
+            <h2>Sync conflicts</h2>
+            <span className="pill">{pendingConflicts.length}</span>
+          </div>
+          <ul className="conflict-list">
+            {pendingConflicts.map((conflict) => (
+              <li key={conflict.id}>
+                <div>
+                  <strong>{conflict.serverTaskTitle ?? conflict.taskId}</strong>
+                  {conflict.serverTaskVersion !== null && (
+                    <span className="muted">v{conflict.serverTaskVersion}</span>
+                  )}
+                </div>
+                <p>{conflict.clientPayloadSummary}</p>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </section>
   );
 }

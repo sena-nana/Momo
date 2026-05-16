@@ -145,6 +145,38 @@ button:disabled {
 .kv li { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px dashed var(--border); }
 .kv li:last-child { border-bottom: 0; }
 .kv span { color: var(--text-muted); }
+.muted { color: var(--text-muted); }
+.pill {
+  min-width: 24px;
+  height: 24px;
+  padding: 2px 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--text-muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.conflict-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.conflict-list li {
+  padding: 10px 0;
+  border-bottom: 1px dashed var(--border);
+}
+.conflict-list li:last-child { border-bottom: 0; }
+.conflict-list div {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+}
+.conflict-list p {
+  margin: 3px 0 0;
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
 
 .quick-add {
   background: var(--bg-elev);
