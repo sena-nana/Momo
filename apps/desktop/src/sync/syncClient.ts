@@ -52,6 +52,7 @@ export interface RunLocalSyncSimulationOptions {
 export interface LocalSyncSimulationResult {
   request: DeltaPushRequest;
   push: ApplyDeltaPushResult;
+  pendingConflictCount: number;
   pendingConflicts: PendingConflictSummary[];
 }
 
@@ -77,11 +78,13 @@ export async function runLocalSyncSimulation({
   const conflicts = await syncApi.listConflicts(
     createListTaskConflictsRequest({ workspaceId, deviceId }),
   );
+  const pendingConflicts = summarizePendingConflicts(conflicts.conflicts);
 
   return {
     request,
     push,
-    pendingConflicts: summarizePendingConflicts(conflicts.conflicts),
+    pendingConflictCount: pendingConflicts.length,
+    pendingConflicts,
   };
 }
 

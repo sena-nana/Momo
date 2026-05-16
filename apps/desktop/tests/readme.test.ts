@@ -15,6 +15,7 @@ describe("desktop README", () => {
     expect(readme).toContain("buildDeltaPushFromPendingChanges");
     expect(readme).toContain("applyDeltaPushResponse");
     expect(readme).toContain("runLocalSyncSimulation");
+    expect(readme).toContain("pendingConflictCount");
     expect(readme).toContain("SYNC_RUN_STATUSES");
     expect(readme).toContain("summarizeDeltaPushResponse");
     expect(readme).toContain("Already synced");

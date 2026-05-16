@@ -146,6 +146,104 @@ describe("desktop sync client adapter", () => {
     );
   });
 
+  it("returns conflict summaries from a local sync simulation without marking the conflicting change synced", async () => {
+    const repository = {
+      listPendingChanges: vi.fn().mockResolvedValue([
+        {
+          id: "change-3",
+          entityType: "task",
+          entityId: "task-1",
+          action: "task.update",
+          payload: {
+            id: "task-1",
+            baseVersion: 1,
+            patch: { title: "Stale local edit" },
+            updatedAt: "2026-05-16T10:20:00.000Z",
+          },
+          createdAt: "2026-05-16T10:21:00.000Z",
+          syncedAt: null,
+        },
+      ]),
+      markChangeSynced: vi.fn().mockResolvedValue(undefined),
+    } as unknown as TaskRepository;
+    const syncApi = createSyncApi({
+      store: createInMemorySyncStore(),
+      now: () => new Date("2026-05-16T12:00:00.000Z"),
+    });
+
+    await syncApi.deltaPush({
+      contractVersion: SYNC_CONTRACT_VERSION,
+      workspaceId: "local",
+      deviceId: "desktop-1",
+      changes: [
+        {
+          id: "change-1",
+          entityType: "task",
+          entityId: "task-1",
+          action: "task.create",
+          payload: {
+            id: "task-1",
+            title: "Original task",
+            notes: null,
+            status: "active",
+            priority: 0,
+            dueAt: null,
+            estimateMin: null,
+            tags: [],
+            createdAt: "2026-05-16T10:00:00.000Z",
+            updatedAt: "2026-05-16T10:00:00.000Z",
+            completedAt: null,
+          },
+          createdAt: "2026-05-16T10:00:00.000Z",
+        },
+        {
+          id: "change-2",
+          entityType: "task",
+          entityId: "task-1",
+          action: "task.update",
+          payload: {
+            id: "task-1",
+            baseVersion: 1,
+            patch: { title: "Server edit" },
+            updatedAt: "2026-05-16T10:10:00.000Z",
+          },
+          createdAt: "2026-05-16T10:11:00.000Z",
+        },
+      ],
+      clientSentAt: "2026-05-16T10:12:00.000Z",
+    });
+
+    await expect(
+      runLocalSyncSimulation({
+        repository,
+        syncApi,
+        workspaceId: "local",
+        deviceId: "desktop-1",
+        now: new Date("2026-05-16T12:01:00.000Z"),
+      }),
+    ).resolves.toMatchObject({
+      push: {
+        acceptedChangeIds: [],
+        summary: {
+          status: "has-conflicts",
+          conflictCount: 1,
+          serverCursor: "cursor-2",
+        },
+      },
+      pendingConflictCount: 1,
+      pendingConflicts: [
+        {
+          id: "conflict-change-3",
+          taskId: "task-1",
+          serverTaskTitle: "Server edit",
+          serverTaskVersion: 2,
+          clientPayloadSummary: 'patch: {"title":"Stale local edit"}',
+        },
+      ],
+    });
+    expect(repository.markChangeSynced).not.toHaveBeenCalled();
+  });
+
   it("marks accepted changes as synced and returns unresolved sync results", async () => {
     const repository = {
       markChangeSynced: vi.fn().mockResolvedValue(undefined),
