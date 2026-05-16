@@ -30,6 +30,7 @@ npm install
 | `npm run tauri build` | 打包 Windows 安装器 |
 | `cargo check`（在 `src-tauri/`） | 仅校验 Rust 端是否能编译 |
 | `.\apps\desktop\node_modules\.bin\tsc.cmd -p packages\contracts\tsconfig.json`（在仓库根目录） | 校验共享 contract 包 |
+| `npm run verify`（在仓库根目录） | 串行运行 desktop test/build、Tauri check、contracts/API TypeScript 检查 |
 
 ## 路由
 
@@ -42,11 +43,19 @@ npm install
 - 当前 schema 包含 `schema_migrations`、`tasks` 与 `local_changes`；`tags` 以 JSON text 存储，时间统一保存 ISO 字符串。
 - `Today` 支持快速添加今日或 Inbox 任务、查看逾期/今日/今日完成；`Inbox` 支持编辑、完成、删除无截止日期任务；`Calendar` 先提供未来 7 天只读 agenda。
 - `local_changes` 记录本地 create / update / status / delete 变更，为后续 Delta Sync 使用。
+- `Settings` 的 Local database 卡片显示 `Pending sync`，即尚未标记 synced 的本地变更数量。
 
 ## 共享契约
 
 - `packages/contracts` 定义 Task DTO、LocalChange DTO、Delta Push/Pull 请求响应类型。
 - 当前仅做纯 TypeScript contract，不接生产后端、不实现 OIDC / PostgreSQL / WebSocket。
+
+## 本地同步前置层
+
+- `buildDeltaPushFromPendingChanges()` 从 `TaskRepository.listPendingChanges()` 构造 `DeltaPushRequest`。
+- `applyDeltaPushResponse()` 会把服务端 accepted change ids 通过 `TaskRepository.markChangeSynced()` 标记为已同步。
+- rejected changes 与 conflicts 目前只作为摘要返回给调用方，不会自动重试、覆盖或解决冲突。
+- 当前没有真实网络请求、账号、后台任务或定时同步；这些仍属于后续 BE-01 / BE-03 范围。
 
 ## 当前限制
 
