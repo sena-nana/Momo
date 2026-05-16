@@ -9,6 +9,8 @@ import {
   type TaskStatusDto,
 } from "../../../packages/contracts/src";
 
+export * from "./tasks";
+
 export interface SyncApi {
   deltaPush(request: DeltaPushRequest): Promise<DeltaPushResponse>;
   deltaPull(request: DeltaPullRequest): Promise<DeltaPullResponse>;
