@@ -32,6 +32,17 @@ export interface LocalChangeDto {
   createdAt: string;
 }
 
+export interface TaskConflictDto {
+  id: string;
+  workspaceId: string;
+  taskId: string;
+  changeId: string;
+  reason: string;
+  clientPayload: unknown;
+  serverTask: TaskDto | null;
+  createdAt: string;
+}
+
 export interface DeltaPushRequest {
   contractVersion: typeof SYNC_CONTRACT_VERSION;
   workspaceId: string;
@@ -47,6 +58,7 @@ export interface DeltaPushResponse {
     id: string;
     reason: string;
   }>;
+  conflicts: TaskConflictDto[];
   serverCursor: string;
   serverTime: string;
 }
@@ -91,5 +103,20 @@ export function createDeltaPullRequest(input: {
     workspaceId: input.workspaceId,
     deviceId: input.deviceId,
     sinceCursor: input.sinceCursor,
+  };
+}
+
+export function createTaskConflict(input: Omit<TaskConflictDto, "createdAt"> & {
+  now: Date;
+}): TaskConflictDto {
+  return {
+    id: input.id,
+    workspaceId: input.workspaceId,
+    taskId: input.taskId,
+    changeId: input.changeId,
+    reason: input.reason,
+    clientPayload: input.clientPayload,
+    serverTask: input.serverTask,
+    createdAt: input.now.toISOString(),
   };
 }

@@ -103,6 +103,7 @@ export function createSyncApi({ store, now = () => new Date() }: SyncApiOptions)
         contractVersion: SYNC_CONTRACT_VERSION,
         acceptedChangeIds,
         rejectedChanges,
+        conflicts: [],
         serverCursor: await store.currentCursor(request.workspaceId),
         serverTime: now().toISOString(),
       };

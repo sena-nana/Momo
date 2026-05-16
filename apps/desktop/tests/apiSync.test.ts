@@ -49,6 +49,7 @@ describe("API sync service skeleton", () => {
       contractVersion: SYNC_CONTRACT_VERSION,
       acceptedChangeIds: ["change-1"],
       rejectedChanges: [],
+      conflicts: [],
       serverTime: "2026-05-16T12:00:00.000Z",
     });
     expect(pushResponse.serverCursor).toBe("cursor-1");
