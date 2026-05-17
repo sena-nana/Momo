@@ -63,6 +63,7 @@ npm install
 - `createHttpSyncTransport()` 定义真实 HTTP transport contract：通过 injected `fetch` 与 base URL 发送 JSON 请求，但当前不接默认 Settings 路径或生产 URL。
 - HTTP transport 支持可选 headers provider 注入 auth/client headers；缺少 base URL 时会抛出 `HTTP sync baseUrl is not configured`，且不会调用 fetch。
 - `createRemoteSyncConfig()` 读取远程同步配置对象：`VITE_MOMO_SYNC_BASE_URL` 生成 base URL，`VITE_MOMO_SYNC_TOKEN` 生成 Bearer headers provider；未配置 base URL 时返回 disabled 状态。
+- `createRemoteSyncRunner()` 是 remote sync runner factory boundary：把 `RemoteSyncConfig`、repository、workspace/device、clock 与 injected `fetch` 组装成可运行的 `SyncRunner`；disabled config 返回 `runner: null`，enabled config 只产出 runner，不接入默认 Settings 路由。
 - `createLocalSyncRunner()` 使用 in-memory API router + HTTP-like sync transport 包装本地 `createSyncApi()`，并已接到 default Settings route，作为当前 local simulation entrypoint 让 `/settings` 中的演示按钮在实际桌面壳里可见。
 - `createSyncRunner()` 是桌面端 sync runner boundary；`runOnce()` 接收注入的 `transport`、workspace/device 与 clock，负责编排一次同步并把 transport 错误归一成可展示结果。
 - 当 transport 提供 `deltaPull()` 时，`runOnce()` runs delta pull after delta push：读取 `sync_state.serverCursor` 作为 `sinceCursor`，拉取并应用远端变化。

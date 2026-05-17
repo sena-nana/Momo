@@ -8,7 +8,7 @@ import type {
 } from "../../../../packages/contracts/src";
 import type { SyncRunnerTransport } from "./syncClient";
 
-type FetchLike = (
+export type FetchLike = (
   input: string,
   init: {
     method: string;

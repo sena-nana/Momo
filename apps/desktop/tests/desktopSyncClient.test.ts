@@ -30,6 +30,7 @@ import {
 import { createHttpSyncTransport } from "../src/sync/httpSyncTransport";
 import { createHttpLikeSyncTransport } from "../src/sync/httpLikeSyncTransport";
 import { createLocalSyncRunner } from "../src/sync/localSyncRunner";
+import { createRemoteSyncRunner } from "../src/sync/remoteSyncRunner";
 import { createRemoteSyncConfig } from "../src/sync/remoteSyncConfig";
 
 describe("desktop sync client adapter", () => {
@@ -343,6 +344,179 @@ describe("desktop sync client adapter", () => {
     expect(config.enabled).toBe(true);
     await expect(config.headers()).resolves.toEqual({
       authorization: "Bearer local-token",
+    });
+  });
+
+  it("short-circuits remote sync runner creation when remote sync is disabled", () => {
+    const fetch = vi.fn();
+    const repository = {
+      listPendingChanges: vi.fn(),
+      markChangeSynced: vi.fn(),
+      getSyncState: vi.fn(),
+      applyRemoteTask: vi.fn(),
+      deleteRemoteTask: vi.fn(),
+      saveSyncState: vi.fn(),
+    } as unknown as TaskRepository;
+
+    expect(
+      createRemoteSyncRunner({
+        remoteSyncConfig: {
+          enabled: false,
+          reason: "Remote sync base URL is not configured",
+        },
+        repository,
+        workspaceId: "local",
+        deviceId: "desktop-1",
+        now: () => new Date("2026-05-16T12:00:00.000Z"),
+        fetch,
+      }),
+    ).toEqual({
+      kind: "disabled",
+      reason: "Remote sync base URL is not configured",
+      runner: null,
+    });
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("creates a remote sync runner from enabled remote config and wires HTTP transport", async () => {
+    const repository = {
+      listPendingChanges: vi.fn().mockResolvedValue([]),
+      markChangeSynced: vi.fn().mockResolvedValue(undefined),
+      getSyncState: vi.fn().mockResolvedValue({
+        serverCursor: "cursor-before",
+        lastSyncedAt: "2026-05-16T11:59:00.000Z",
+        lastError: null,
+        updatedAt: "2026-05-16T11:59:00.000Z",
+      }),
+      applyRemoteTask: vi.fn().mockResolvedValue(undefined),
+      deleteRemoteTask: vi.fn().mockResolvedValue(undefined),
+      saveSyncState: vi.fn().mockResolvedValue({
+        serverCursor: "cursor-after",
+        lastSyncedAt: "2026-05-16T12:00:00.000Z",
+        lastError: null,
+        updatedAt: "2026-05-16T12:00:00.000Z",
+      }),
+    } as unknown as TaskRepository;
+    const fetch = vi.fn().mockImplementation(async (url: string, init) => {
+      expect(init.headers).toEqual(
+        expect.objectContaining({
+          "content-type": "application/json",
+          authorization: "Bearer remote-token",
+        }),
+      );
+
+      if (url.endsWith("/sync/delta/push")) {
+        return {
+          ok: true,
+          status: 200,
+          json: vi.fn().mockResolvedValue({
+            contractVersion: SYNC_CONTRACT_VERSION,
+            acceptedChangeIds: [],
+            rejectedChanges: [],
+            conflicts: [],
+            serverCursor: "cursor-push",
+            serverTime: "2026-05-16T12:00:00.000Z",
+          } satisfies DeltaPushResponse),
+        };
+      }
+
+      if (url.endsWith("/sync/conflicts")) {
+        return {
+          ok: true,
+          status: 200,
+          json: vi.fn().mockResolvedValue({
+            contractVersion: SYNC_CONTRACT_VERSION,
+            conflicts: [],
+            serverCursor: "cursor-push",
+            serverTime: "2026-05-16T12:00:00.000Z",
+          }),
+        };
+      }
+
+      if (url.endsWith("/sync/delta/pull")) {
+        expect(init.body).toContain('"sinceCursor":"cursor-before"');
+        return {
+          ok: true,
+          status: 200,
+          json: vi.fn().mockResolvedValue({
+            contractVersion: SYNC_CONTRACT_VERSION,
+            tasks: [
+              {
+                id: "task-remote",
+                workspaceId: "local",
+                title: "Remote task",
+                notes: null,
+                status: "active",
+                priority: 0,
+                dueAt: null,
+                estimateMin: null,
+                tags: [],
+                createdAt: "2026-05-16T10:00:00.000Z",
+                updatedAt: "2026-05-16T12:00:00.000Z",
+                completedAt: null,
+                version: 2,
+              },
+            ],
+            deletedTaskIds: ["task-deleted"],
+            serverCursor: "cursor-after",
+            serverTime: "2026-05-16T12:00:30.000Z",
+          } satisfies DeltaPullResponse),
+        };
+      }
+
+      throw new Error(`Unexpected remote sync URL: ${url}`);
+    });
+
+    const runnerResolution = createRemoteSyncRunner({
+      remoteSyncConfig: {
+        enabled: true,
+        baseUrl: "https://api.example.test/momo",
+        headers: async () => ({ authorization: "Bearer remote-token" }),
+      },
+      repository,
+      workspaceId: "local",
+      deviceId: "desktop-1",
+      now: () => new Date("2026-05-16T12:00:00.000Z"),
+      fetch,
+    });
+
+    expect(runnerResolution.kind).toBe("enabled");
+    await expect(runnerResolution.runner.runOnce()).resolves.toMatchObject({
+      ok: true,
+      result: {
+        pull: {
+          appliedTaskCount: 1,
+          deletedTaskCount: 1,
+          serverCursor: "cursor-after",
+        },
+      },
+    });
+    expect(fetch).toHaveBeenCalledWith(
+      "https://api.example.test/momo/sync/delta/push",
+      expect.objectContaining({
+        method: "POST",
+      }),
+    );
+    expect(fetch).toHaveBeenCalledWith(
+      "https://api.example.test/momo/sync/conflicts",
+      expect.objectContaining({
+        method: "POST",
+      }),
+    );
+    expect(fetch).toHaveBeenCalledWith(
+      "https://api.example.test/momo/sync/delta/pull",
+      expect.objectContaining({
+        method: "POST",
+      }),
+    );
+    expect(repository.applyRemoteTask).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "task-remote", title: "Remote task" }),
+    );
+    expect(repository.deleteRemoteTask).toHaveBeenCalledWith("task-deleted");
+    expect(repository.saveSyncState).toHaveBeenCalledWith({
+      serverCursor: "cursor-after",
+      lastSyncedAt: "2026-05-16T12:00:00.000Z",
+      lastError: null,
     });
   });
 
