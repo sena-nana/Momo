@@ -793,6 +793,14 @@ describe("desktop sync client adapter", () => {
         lastError: null,
         updatedAt: "2026-05-16T12:01:00.000Z",
       }),
+      recordSyncRun: vi.fn().mockResolvedValue({
+        id: "run-1",
+        status: "succeeded",
+        startedAt: "2026-05-16T12:01:00.000Z",
+        finishedAt: "2026-05-16T12:01:01.000Z",
+        message: "1 local change synced",
+        serverCursor: "cursor-8",
+      }),
     } as unknown as TaskRepository;
     const transport = {
       deltaPush: vi.fn().mockResolvedValue({
@@ -877,6 +885,13 @@ describe("desktop sync client adapter", () => {
       lastSyncedAt: "2026-05-16T12:01:00.000Z",
       lastError: null,
     });
+    expect(repository.recordSyncRun).toHaveBeenCalledWith({
+      status: "succeeded",
+      startedAt: "2026-05-16T12:01:00.000Z",
+      finishedAt: "2026-05-16T12:01:00.000Z",
+      message: "1 local change synced",
+      serverCursor: "cursor-8",
+    });
     expect(transport.deltaPull).toHaveBeenCalledWith({
       contractVersion: SYNC_CONTRACT_VERSION,
       workspaceId: "local",
@@ -901,6 +916,14 @@ describe("desktop sync client adapter", () => {
         lastError: "transport unavailable",
         updatedAt: "2026-05-16T12:01:00.000Z",
       }),
+      recordSyncRun: vi.fn().mockResolvedValue({
+        id: "run-failed",
+        status: "failed",
+        startedAt: "2026-05-16T12:01:00.000Z",
+        finishedAt: "2026-05-16T12:01:00.000Z",
+        message: "transport unavailable",
+        serverCursor: null,
+      }),
     } as unknown as TaskRepository;
     const transport = {
       deltaPush: vi.fn().mockRejectedValue(new Error("transport unavailable")),
@@ -924,6 +947,13 @@ describe("desktop sync client adapter", () => {
       serverCursor: null,
       lastSyncedAt: null,
       lastError: "transport unavailable",
+    });
+    expect(repository.recordSyncRun).toHaveBeenCalledWith({
+      status: "failed",
+      startedAt: "2026-05-16T12:01:00.000Z",
+      finishedAt: "2026-05-16T12:01:00.000Z",
+      message: "transport unavailable",
+      serverCursor: null,
     });
     expect(transport.listConflicts).not.toHaveBeenCalled();
   });

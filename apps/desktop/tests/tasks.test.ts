@@ -8,6 +8,7 @@ import {
   createTaskRepository,
   type LocalChangeRow,
   type SqlDatabase,
+  type SyncRunRow,
   type SyncStateRow,
 } from "../src/data/taskRepository";
 
@@ -91,6 +92,7 @@ describe("TaskRepository", () => {
     expect(db.executedSql.join("\n")).toContain("CREATE TABLE IF NOT EXISTS schema_migrations");
     expect(db.executedSql.join("\n")).toContain("CREATE TABLE IF NOT EXISTS local_changes");
     expect(db.executedSql.join("\n")).toContain("CREATE TABLE IF NOT EXISTS sync_state");
+    expect(db.executedSql.join("\n")).toContain("CREATE TABLE IF NOT EXISTS sync_runs");
   });
 
   it("creates a normalized active task row and records a local change", async () => {
@@ -259,6 +261,79 @@ describe("TaskRepository", () => {
     });
   });
 
+  it("records and lists recent sync runs", async () => {
+    const db = new RecordingDatabase({
+      syncRuns: [
+        {
+          id: "run-2",
+          status: "failed",
+          started_at: "2026-05-16T12:03:00.000Z",
+          finished_at: "2026-05-16T12:03:05.000Z",
+          message: "transport unavailable",
+          server_cursor: null,
+        },
+        {
+          id: "run-1",
+          status: "succeeded",
+          started_at: "2026-05-16T12:00:00.000Z",
+          finished_at: "2026-05-16T12:00:05.000Z",
+          message: "Already synced",
+          server_cursor: "cursor-8",
+        },
+      ],
+    });
+    const repository = createTaskRepository(() => Promise.resolve(db), {
+      id: () => "task-id",
+      changeId: () => "change-id",
+      syncRunId: () => "run-3",
+    });
+
+    await expect(
+      repository.recordSyncRun({
+        status: "succeeded",
+        startedAt: "2026-05-16T12:05:00.000Z",
+        finishedAt: "2026-05-16T12:05:04.000Z",
+        message: "1 local change synced",
+        serverCursor: "cursor-9",
+      }),
+    ).resolves.toEqual({
+      id: "run-3",
+      status: "succeeded",
+      startedAt: "2026-05-16T12:05:00.000Z",
+      finishedAt: "2026-05-16T12:05:04.000Z",
+      message: "1 local change synced",
+      serverCursor: "cursor-9",
+    });
+    expect(db.paramsForSql("INSERT INTO sync_runs")).toEqual([
+      "run-3",
+      "succeeded",
+      "2026-05-16T12:05:00.000Z",
+      "2026-05-16T12:05:04.000Z",
+      "1 local change synced",
+      "cursor-9",
+    ]);
+
+    await expect(repository.listRecentSyncRuns(2)).resolves.toEqual([
+      {
+        id: "run-2",
+        status: "failed",
+        startedAt: "2026-05-16T12:03:00.000Z",
+        finishedAt: "2026-05-16T12:03:05.000Z",
+        message: "transport unavailable",
+        serverCursor: null,
+      },
+      {
+        id: "run-1",
+        status: "succeeded",
+        startedAt: "2026-05-16T12:00:00.000Z",
+        finishedAt: "2026-05-16T12:00:05.000Z",
+        message: "Already synced",
+        serverCursor: "cursor-8",
+      },
+    ]);
+    expect(db.paramsForSql("SELECT * FROM sync_runs")).toEqual([2]);
+  });
+
   it("applies pulled remote task changes without recording local changes", async () => {
     const db = new RecordingDatabase();
     const repository = createTaskRepository(() => Promise.resolve(db));
@@ -332,6 +407,7 @@ class RecordingDatabase implements SqlDatabase {
   constructor(private rows: {
     localChanges?: LocalChangeRow[];
     syncState?: SyncStateRow[];
+    syncRuns?: SyncRunRow[];
     stats?: Array<{
       total_tasks: number;
       active_tasks: number;
@@ -349,7 +425,8 @@ class RecordingDatabase implements SqlDatabase {
     return { rowsAffected: 1 };
   }
 
-  async select<T>(sql: string) {
+  async select<T>(sql: string, params?: unknown[]) {
+    this.calls.push({ sql, params });
     if (sql.includes("COUNT(*) AS total_tasks")) {
       return (this.rows.stats ?? []) as T[];
     }
@@ -358,6 +435,9 @@ class RecordingDatabase implements SqlDatabase {
     }
     if (sql.includes("FROM sync_state")) {
       return (this.rows.syncState ?? []) as T[];
+    }
+    if (sql.includes("FROM sync_runs")) {
+      return (this.rows.syncRuns ?? []) as T[];
     }
     return [] as T[];
   }

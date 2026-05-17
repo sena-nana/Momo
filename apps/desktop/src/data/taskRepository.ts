@@ -31,6 +31,8 @@ export interface TaskRepository {
   markChangeSynced(id: string, syncedAt?: Date): Promise<void>;
   getSyncState(): Promise<SyncState>;
   saveSyncState(input: SaveSyncStateInput): Promise<SyncState>;
+  recordSyncRun(input: RecordSyncRunInput): Promise<SyncRun>;
+  listRecentSyncRuns(limit: number): Promise<SyncRun[]>;
   listToday(now: Date): Promise<TodayTaskGroups>;
   listInbox(): Promise<Task[]>;
   listAgenda(start: Date, end: Date): Promise<Task[]>;
@@ -84,6 +86,34 @@ export interface SyncStateRow {
   updated_at: string;
 }
 
+export type SyncRunStatus = "succeeded" | "failed";
+
+export interface SyncRun {
+  id: string;
+  status: SyncRunStatus;
+  startedAt: string;
+  finishedAt: string;
+  message: string;
+  serverCursor: string | null;
+}
+
+export interface RecordSyncRunInput {
+  status: SyncRunStatus;
+  startedAt: string;
+  finishedAt: string;
+  message: string;
+  serverCursor: string | null;
+}
+
+export interface SyncRunRow {
+  id: string;
+  status: SyncRunStatus;
+  started_at: string;
+  finished_at: string;
+  message: string;
+  server_cursor: string | null;
+}
+
 export interface DatabaseStats {
   totalTasks: number;
   activeTasks: number;
@@ -96,6 +126,7 @@ interface RepositoryOptions {
   now?: () => Date;
   id?: () => string;
   changeId?: () => string;
+  syncRunId?: () => string;
 }
 
 type DatabaseLoader = (path: string) => Promise<SqlDatabase>;
@@ -112,6 +143,7 @@ export function createTaskRepository(
   const now = options.now ?? (() => new Date());
   const id = options.id ?? createId;
   const changeId = options.changeId ?? createId;
+  const syncRunId = options.syncRunId ?? createId;
 
   async function getDb() {
     dbPromise ??= loadDatabase(MOMO_DATABASE_PATH);
@@ -358,6 +390,45 @@ export function createTaskRepository(
       };
     },
 
+    async recordSyncRun(input) {
+      await init();
+      const run: SyncRun = {
+        id: syncRunId(),
+        ...input,
+      };
+      const db = await getDb();
+      await db.execute(
+        `INSERT INTO sync_runs (
+          id, status, started_at, finished_at, message, server_cursor
+        ) VALUES ($1, $2, $3, $4, $5, $6)`,
+        [
+          run.id,
+          run.status,
+          run.startedAt,
+          run.finishedAt,
+          run.message,
+          run.serverCursor,
+        ],
+      );
+      return run;
+    },
+
+    async listRecentSyncRuns(limit) {
+      await init();
+      const normalizedLimit = Math.max(0, Math.floor(limit));
+      if (normalizedLimit === 0) {
+        return [];
+      }
+      const db = await getDb();
+      const rows = await db.select<SyncRunRow>(
+        `SELECT * FROM sync_runs
+         ORDER BY started_at DESC
+         LIMIT $1`,
+        [normalizedLimit],
+      );
+      return rows.map(mapSyncRunRow);
+    },
+
     async listToday(currentDate) {
       await init();
       const { start, end } = getDayBounds(currentDate);
@@ -499,12 +570,22 @@ const SCHEMA = [
     last_error TEXT,
     updated_at TEXT NOT NULL
   )`,
+  `CREATE TABLE IF NOT EXISTS sync_runs (
+    id TEXT PRIMARY KEY,
+    status TEXT NOT NULL CHECK (status IN ('succeeded', 'failed')),
+    started_at TEXT NOT NULL,
+    finished_at TEXT NOT NULL,
+    message TEXT NOT NULL,
+    server_cursor TEXT
+  )`,
   `INSERT OR IGNORE INTO schema_migrations (version, name, applied_at)
    VALUES (1, 'create_tasks', datetime('now'))`,
   `INSERT OR IGNORE INTO schema_migrations (version, name, applied_at)
    VALUES (2, 'create_local_changes', datetime('now'))`,
   `INSERT OR IGNORE INTO schema_migrations (version, name, applied_at)
    VALUES (3, 'create_sync_state', datetime('now'))`,
+  `INSERT OR IGNORE INTO schema_migrations (version, name, applied_at)
+   VALUES (4, 'create_sync_runs', datetime('now'))`,
 ];
 
 function mapLocalChangeRow(row: LocalChangeRow): LocalChange {
@@ -533,6 +614,17 @@ function mapSyncStateRow(row: SyncStateRow): SyncState {
     lastSyncedAt: row.last_synced_at,
     lastError: row.last_error,
     updatedAt: row.updated_at,
+  };
+}
+
+function mapSyncRunRow(row: SyncRunRow): SyncRun {
+  return {
+    id: row.id,
+    status: row.status,
+    startedAt: row.started_at,
+    finishedAt: row.finished_at,
+    message: row.message,
+    serverCursor: row.server_cursor,
   };
 }
 

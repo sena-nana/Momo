@@ -859,6 +859,15 @@ function fakeRepository(overrides: {
     markChangeSynced: vi.fn().mockResolvedValue(undefined),
     getSyncState: vi.fn().mockResolvedValue(syncState),
     saveSyncState: vi.fn().mockResolvedValue(syncState),
+    recordSyncRun: vi.fn().mockResolvedValue({
+      id: "run-1",
+      status: "succeeded",
+      startedAt: "2026-05-16T12:00:00.000Z",
+      finishedAt: "2026-05-16T12:00:00.000Z",
+      message: "Already synced",
+      serverCursor: "cursor-0",
+    }),
+    listRecentSyncRuns: vi.fn().mockResolvedValue([]),
   };
 }
 

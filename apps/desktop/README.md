@@ -40,11 +40,12 @@ npm install
 
 - SQLite 由 `@tauri-apps/plugin-sql` / `tauri-plugin-sql` 提供，连接固定为 `sqlite:momo.db`。
 - 前端通过 `TaskRepository` 访问数据，页面不直接写 SQL。
-- 当前 schema 包含 `schema_migrations`、`tasks`、`local_changes` 与 `sync_state`；`tags` 以 JSON text 存储，时间统一保存 ISO 字符串。
+- 当前 schema 包含 `schema_migrations`、`tasks`、`local_changes`、`sync_state` 与 `sync_runs`；`tags` 以 JSON text 存储，时间统一保存 ISO 字符串。
 - `Today` 支持快速添加今日或 Inbox 任务、查看逾期/今日/今日完成；`Inbox` 支持编辑、完成、删除无截止日期任务；`Calendar` 先提供未来 7 天只读 agenda。
 - `local_changes` 记录本地 create / update / status / delete 变更，为后续 Delta Sync 使用。
 - `Settings` 的 Local database 卡片显示 `Pending sync`，即尚未标记 synced 的本地变更数量。
 - `TaskRepository.getSyncState()` / `saveSyncState()` 读写本地同步状态：最新 server cursor、最近同步时间、最近错误与状态更新时间。
+- `TaskRepository.recordSyncRun()` / `listRecentSyncRuns()` 维护 sync run history：记录每次手动同步演示的成功/失败、开始/结束时间、message 与 cursor，作为 Settings 后续可见性的本地边界。
 
 ## 共享契约
 
@@ -69,6 +70,7 @@ npm install
 - `createSyncRunner()` 是桌面端 sync runner boundary；`runOnce()` 接收注入的 `transport`、workspace/device 与 clock，负责编排一次同步并把 transport 错误归一成可展示结果。
 - 当 transport 提供 `deltaPull()` 时，`runOnce()` runs delta pull after delta push：读取 `sync_state.serverCursor` 作为 `sinceCursor`，拉取并应用远端变化。
 - runner 成功时会通过 `saveSyncState()` 保存 server cursor / last synced 并 clears last error；失败时会 records last error。
+- runner 成功或失败后会 best-effort 写入 `sync_runs`，即使运行历史写入失败也不会遮蔽本次同步结果。
 - 如果保存 `sync_state` 失败，runner 仍 does not hide the original sync error，页面会优先看到原始 transport / sync 失败原因。
 - rejected changes 与 conflicts 目前只作为摘要返回给调用方，不会自动重试、覆盖或解决冲突。
 - `SYNC_RUN_STATUSES` 固定导出同步运行状态列表；`summarizeDeltaPushResponse()` 会把一次 delta push 响应归纳成 `all-synced`、`has-rejections` 或 `has-conflicts` 状态文案；无变更时显示 `Already synced`。

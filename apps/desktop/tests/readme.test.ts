@@ -14,8 +14,11 @@ describe("desktop README", () => {
     expect(readme).toContain("Tauri 2 + Vue 3 + TypeScript");
     expect(readme).toContain("Pending sync");
     expect(readme).toContain("sync_state");
+    expect(readme).toContain("sync_runs");
     expect(readme).toContain("getSyncState");
     expect(readme).toContain("saveSyncState");
+    expect(readme).toContain("recordSyncRun");
+    expect(readme).toContain("listRecentSyncRuns");
     expect(readme).toContain("buildDeltaPushFromPendingChanges");
     expect(readme).toContain("applyDeltaPushResponse");
     expect(readme).toContain("applyDeltaPullResponse");
@@ -65,6 +68,7 @@ describe("desktop README", () => {
     expect(readme).toContain("Local sync simulation");
     expect(readme).toContain("keyboard-accessible");
     expect(readme).toContain("sync runner boundary");
+    expect(readme).toContain("sync run history");
     expect(readme).toContain("cursor state boundary");
     expect(readme).toContain("local simulation entrypoint");
     expect(readme).toContain("Manual acceptance");

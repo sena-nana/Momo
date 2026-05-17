@@ -74,6 +74,7 @@ export interface SyncRunnerOptions {
     | "applyRemoteTask"
     | "deleteRemoteTask"
     | "saveSyncState"
+    | "recordSyncRun"
   >;
   transport: SyncRunnerTransport;
   workspaceId: string;
@@ -135,6 +136,13 @@ export function createSyncRunner({
             lastError: null,
           });
         }
+        await recordSyncRunBestEffort(repository, {
+          status: "succeeded",
+          startedAt: startedAt.toISOString(),
+          finishedAt: now().toISOString(),
+          message: result.push.summary.message,
+          serverCursor: result.pull?.serverCursor ?? result.push.serverCursor,
+        });
         return {
           ok: true,
           result,
@@ -146,6 +154,13 @@ export function createSyncRunner({
           lastSyncedAt: null,
           lastError: error,
         });
+        await recordSyncRunBestEffort(repository, {
+          status: "failed",
+          startedAt: startedAt.toISOString(),
+          finishedAt: now().toISOString(),
+          message: error,
+          serverCursor: null,
+        });
         return {
           ok: false,
           error,
@@ -154,6 +169,17 @@ export function createSyncRunner({
       }
     },
   };
+}
+
+async function recordSyncRunBestEffort(
+  repository: Pick<TaskRepository, "recordSyncRun">,
+  input: Parameters<TaskRepository["recordSyncRun"]>[0],
+) {
+  try {
+    await repository.recordSyncRun(input);
+  } catch {
+    // Sync history is diagnostic only; do not hide the primary sync outcome.
+  }
 }
 
 async function saveSyncStateBestEffort(
