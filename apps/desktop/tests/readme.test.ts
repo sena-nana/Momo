@@ -110,6 +110,9 @@ describe("desktop README", () => {
     expect(readme).toContain("realtime events are currently contract and in-memory semantics only");
     expect(readme).toContain("GET /sync/events");
     expect(readme).toContain("does not start a WebSocket server");
+    expect(readme).toContain("accepted task changes publish `task.changed`");
+    expect(readme).toContain("conflicts publish `conflict.raised`");
+    expect(readme).toContain("rejected changes do not publish `task.changed`");
     expect(readme).toContain("BE-01 / IF-01 production backend prerequisites");
     expect(readme).toContain("keep the default Settings route on local simulation");
     expect(readme).not.toContain("下一步建议围绕 HTTP transport 增加认证 header / base URL 配置边界");

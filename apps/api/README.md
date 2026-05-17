@@ -59,6 +59,7 @@ BE-04 realtime events 当前只实现 contract and in-memory semantics：
 
 - `SyncEventDto` 覆盖 `task.changed`、`sync.run.updated` 与 `conflict.raised`。
 - `createSyncEventApi()` 可发布内存事件，并用 `GET /sync/events` 按 sequence 补齐。
+- sync-generated realtime events 仍只存在于内存边界：accepted task changes publish `task.changed`，conflicts publish `conflict.raised`，rejected changes do not publish `task.changed`。
 - 当前是 no WebSocket server、no Redis/event bus、no production backend。
 - 默认桌面 Settings 路由仍保留在 local simulation，不会因为该 route 存在而切到远程实时同步。
 

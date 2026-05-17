@@ -389,6 +389,63 @@ describe("API route adapter skeleton", () => {
       },
     });
   });
+
+  it("routes sync-generated realtime events through the catch-up endpoint", async () => {
+    const eventApi = createSyncEventApi({
+      store: createInMemorySyncEventStore(),
+      now: () => new Date("2026-05-16T12:00:00.000Z"),
+    });
+    const router = createApiRouter({
+      taskService: createTaskService({
+        repository: createInMemoryTaskRepository(),
+        now: () => new Date("2026-05-16T12:00:00.000Z"),
+        id: () => "task-1",
+      }),
+      syncApi: createSyncApi({
+        store: createInMemorySyncStore(),
+        eventApi,
+        now: () => new Date("2026-05-16T12:00:00.000Z"),
+      }),
+      syncEventApi: eventApi,
+    });
+
+    await router.handle({
+      method: "POST",
+      path: "/sync/delta/push",
+      body: createDeltaPushRequest({
+        workspaceId: "workspace-a",
+        deviceId: "desktop-1",
+        changes: [taskCreateChange("change-1", "Evented task", 0)],
+        now: new Date("2026-05-16T11:00:00.000Z"),
+      }),
+    });
+
+    await expect(
+      router.handle({
+        method: "GET",
+        path: "/sync/events",
+        body: createListSyncEventsRequest({
+          workspaceId: "workspace-a",
+          deviceId: "desktop-1",
+          afterSequence: 0,
+          limit: 10,
+        }),
+      }),
+    ).resolves.toMatchObject({
+      status: 200,
+      body: {
+        events: [
+          {
+            type: "task.changed",
+            taskId: "task-1",
+            changeId: "change-1",
+            payload: { action: "task.create" },
+          },
+        ],
+        latestSequence: 1,
+      },
+    });
+  });
 });
 
 function createRouter() {

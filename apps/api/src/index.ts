@@ -79,6 +79,7 @@ export interface SyncStore {
 
 export interface ApplyChangeResult {
   conflict?: TaskConflictDto;
+  applied?: boolean;
 }
 
 export interface ConflictResolutionResult {
@@ -95,6 +96,7 @@ export interface SyncSnapshot {
 
 interface SyncApiOptions {
   store: SyncStore;
+  eventApi?: SyncEventApi;
   now?: () => Date;
 }
 
@@ -152,7 +154,11 @@ interface TaskStatusPayload {
   updatedAt: string;
 }
 
-export function createSyncApi({ store, now = () => new Date() }: SyncApiOptions): SyncApi {
+export function createSyncApi({
+  store,
+  eventApi,
+  now = () => new Date(),
+}: SyncApiOptions): SyncApi {
   return {
     async deltaPush(request) {
       assertSupportedContract(request.contractVersion);
@@ -165,8 +171,12 @@ export function createSyncApi({ store, now = () => new Date() }: SyncApiOptions)
           const result = await store.applyChange(request.workspaceId, change, now());
           if (result.conflict) {
             conflicts.push(result.conflict);
+            await publishConflictRaisedEvent(eventApi, result.conflict);
           } else {
             acceptedChangeIds.push(change.id);
+            if (result.applied !== false) {
+              await publishTaskChangedEvent(eventApi, request.workspaceId, change);
+            }
           }
         } catch (error) {
           rejectedChanges.push({
@@ -335,7 +345,7 @@ export function createInMemorySyncStore(): SyncStore {
         throw new Error("Unsupported entity type");
       }
       if (workspace.appliedChangeIds.has(change.id)) {
-        return {};
+        return { applied: false };
       }
 
       if (change.action === "task.delete") {
@@ -345,7 +355,7 @@ export function createInMemorySyncStore(): SyncStore {
         workspace.deletedTaskIds.add(change.entityId);
         workspace.deleteVersions.set(change.entityId, version);
         workspace.appliedChangeIds.add(change.id);
-        return {};
+        return { applied: true };
       }
 
       const existing = workspace.tasks.get(change.entityId);
@@ -376,7 +386,7 @@ export function createInMemorySyncStore(): SyncStore {
       workspace.deletedTaskIds.delete(change.entityId);
       workspace.deleteVersions.delete(change.entityId);
       workspace.appliedChangeIds.add(change.id);
-      return {};
+      return { applied: true };
     },
 
     async listChanges(workspaceId, sinceCursor) {
@@ -457,6 +467,40 @@ function assertSupportedContract(contractVersion: number) {
   if (contractVersion !== SYNC_CONTRACT_VERSION) {
     throw new Error("Unsupported sync contract version");
   }
+}
+
+async function publishTaskChangedEvent(
+  eventApi: SyncEventApi | undefined,
+  workspaceId: string,
+  change: LocalChangeDto,
+) {
+  if (!eventApi) return;
+  await eventApi.publishEvent({
+    workspaceId,
+    type: "task.changed",
+    taskId: change.entityId,
+    changeId: change.id,
+    payload: {
+      action: change.action,
+    },
+  });
+}
+
+async function publishConflictRaisedEvent(
+  eventApi: SyncEventApi | undefined,
+  conflict: TaskConflictDto,
+) {
+  if (!eventApi) return;
+  await eventApi.publishEvent({
+    workspaceId: conflict.workspaceId,
+    type: "conflict.raised",
+    taskId: conflict.taskId,
+    changeId: conflict.changeId,
+    conflictId: conflict.id,
+    payload: {
+      reason: conflict.reason,
+    },
+  });
 }
 
 function normalizeTaskPayload(payload: unknown, entityId: string): TaskPayload {

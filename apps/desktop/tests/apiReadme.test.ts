@@ -50,4 +50,16 @@ describe("API README", () => {
     expect(readme).toContain("contract and in-memory semantics");
     expect(readme).toContain("no WebSocket server");
   });
+
+  it("documents sync-generated realtime events without production push infrastructure", () => {
+    const readme = readFileSync(
+      resolve(process.cwd(), "../../apps/api/README.md"),
+      "utf-8",
+    );
+
+    expect(readme).toContain("sync-generated realtime events");
+    expect(readme).toContain("accepted task changes publish `task.changed`");
+    expect(readme).toContain("conflicts publish `conflict.raised`");
+    expect(readme).toContain("rejected changes do not publish `task.changed`");
+  });
 });

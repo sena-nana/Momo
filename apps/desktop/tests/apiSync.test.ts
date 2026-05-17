@@ -815,6 +815,111 @@ describe("API sync service skeleton", () => {
       serverTime: "2026-05-16T12:00:00.000Z",
     });
   });
+
+  it("publishes realtime events for accepted task changes and raised conflicts", async () => {
+    const eventApi = createSyncEventApi({
+      store: createInMemorySyncEventStore(),
+      now: () => new Date("2026-05-16T12:00:00.000Z"),
+    });
+    const api = createSyncApi({
+      store: createInMemorySyncStore(),
+      eventApi,
+      now: () => new Date("2026-05-16T12:00:00.000Z"),
+    });
+
+    await api.deltaPush(
+      push("local", [
+        taskCreateChange("change-1", {
+          id: "task-1",
+          title: "Original task",
+          updatedAt: "2026-05-16T10:00:00.000Z",
+        }),
+      ]),
+    );
+    await api.deltaPush(
+      push("local", [
+        {
+          id: "change-2",
+          entityType: "task",
+          entityId: "task-1",
+          action: "task.update",
+          payload: {
+            id: "task-1",
+            baseVersion: 1,
+            patch: { title: "Server-side edit" },
+            updatedAt: "2026-05-16T10:10:00.000Z",
+          },
+          createdAt: "2026-05-16T10:11:00.000Z",
+        },
+      ]),
+    );
+    await api.deltaPush(
+      push("local", [
+        {
+          id: "change-3",
+          entityType: "task",
+          entityId: "task-1",
+          action: "task.update",
+          payload: {
+            id: "task-1",
+            baseVersion: 1,
+            patch: { title: "Stale local edit" },
+            updatedAt: "2026-05-16T10:12:00.000Z",
+          },
+          createdAt: "2026-05-16T10:13:00.000Z",
+        },
+        {
+          id: "change-bad",
+          entityType: "task",
+          entityId: "missing-task",
+          action: "task.update",
+          payload: {
+            id: "missing-task",
+            patch: { title: "Cannot update" },
+            updatedAt: "2026-05-16T10:14:00.000Z",
+          },
+          createdAt: "2026-05-16T10:15:00.000Z",
+        },
+      ]),
+    );
+
+    await expect(
+      eventApi.listEvents(
+        createListSyncEventsRequest({
+          workspaceId: "local",
+          deviceId: "desktop-1",
+          afterSequence: 0,
+          limit: 10,
+        }),
+      ),
+    ).resolves.toMatchObject({
+      events: [
+        {
+          id: "event-1",
+          type: "task.changed",
+          taskId: "task-1",
+          changeId: "change-1",
+          payload: { action: "task.create" },
+        },
+        {
+          id: "event-2",
+          type: "task.changed",
+          taskId: "task-1",
+          changeId: "change-2",
+          payload: { action: "task.update" },
+        },
+        {
+          id: "event-3",
+          type: "conflict.raised",
+          taskId: "task-1",
+          changeId: "change-3",
+          conflictId: "conflict-change-3",
+          payload: { reason: "Task version conflict" },
+        },
+      ],
+      latestSequence: 3,
+    });
+  });
 });
 
 function push(workspaceId: string, changes: LocalChangeDto[]) {
