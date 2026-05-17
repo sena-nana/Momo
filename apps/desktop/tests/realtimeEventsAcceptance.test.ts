@@ -11,14 +11,14 @@ const checklistPath = resolve(
 const apiReadmePath = resolve(desktopRoot, "../../apps/api/README.md");
 const desktopReadmePath = resolve(desktopRoot, "README.md");
 
-describe("realtime events acceptance checklist", () => {
-  it("documents the BE-04 local-only realtime event boundary", () => {
+describe("实时事件验收清单", () => {
+  it("记录 BE-04 本地实时事件边界", () => {
     expect(existsSync(checklistPath)).toBe(true);
 
     const checklist = readFileSync(checklistPath, "utf-8");
 
-    expect(checklist).toContain("# Realtime events acceptance checklist");
-    expect(checklist).toContain("BE-04 local-only boundary");
+    expect(checklist).toContain("# 实时事件验收清单");
+    expect(checklist).toContain("BE-04 本地边界");
     expect(checklist).toContain("SyncEventDto");
     expect(checklist).toContain("createSyncEventApi()");
     expect(checklist).toContain("createInMemorySyncEventStore()");
@@ -30,15 +30,15 @@ describe("realtime events acceptance checklist", () => {
     expect(checklist).toContain("task.changed");
     expect(checklist).toContain("conflict.raised");
     expect(checklist).toContain("sync.run.updated");
-    expect(checklist).toContain("sequence catch-up");
-    expect(checklist).toContain("no WebSocket server");
-    expect(checklist).toContain("no Redis/event bus");
-    expect(checklist).toContain("no production backend");
-    expect(checklist).toContain("no notification delivery");
-    expect(checklist).toContain("default Settings route stays on local simulation");
+    expect(checklist).toContain("sequence 补拉");
+    expect(checklist).toContain("不启动 WebSocket server");
+    expect(checklist).toContain("不接 Redis/event bus");
+    expect(checklist).toContain("不接生产后端");
+    expect(checklist).toContain("不做通知投递");
+    expect(checklist).toContain("默认设置页路由保持在本地模拟");
   });
 
-  it("links the checklist from API and desktop readmes", () => {
+  it("从 API 和桌面端 README 链接清单", () => {
     const apiReadme = readFileSync(apiReadmePath, "utf-8");
     const desktopReadme = readFileSync(desktopReadmePath, "utf-8");
 

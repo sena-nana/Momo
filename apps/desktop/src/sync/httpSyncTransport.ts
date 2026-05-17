@@ -86,7 +86,7 @@ async function postSyncRoute<TResponse>(
     | ListSyncEventsRequest,
 ): Promise<TResponse> {
   if (!baseUrl.trim()) {
-    throw new Error("HTTP sync baseUrl is not configured");
+    throw new Error("未配置 HTTP 同步 baseUrl");
   }
   const extraHeaders = headers ? await headers() : {};
   const response = await fetch(joinUrl(baseUrl, path), {
@@ -114,5 +114,5 @@ function getResponseError(body: unknown) {
   if (body && typeof body === "object" && "error" in body) {
     return String((body as { error: unknown }).error);
   }
-  return "HTTP sync transport failed";
+  return "HTTP 同步传输失败";
 }

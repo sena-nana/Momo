@@ -77,5 +77,5 @@ function getResponseError(body: unknown) {
   if (body && typeof body === "object" && "error" in body) {
     return String((body as { error: unknown }).error);
   }
-  return `HTTP-like sync transport failed`;
+  return "HTTP-like 同步传输失败";
 }

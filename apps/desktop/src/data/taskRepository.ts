@@ -173,7 +173,7 @@ export function createTaskRepository(
     );
     const row = rows[0];
     if (!row) {
-      throw new Error("Task not found");
+      throw new Error("任务不存在");
     }
     return mapTaskRow(row);
   }

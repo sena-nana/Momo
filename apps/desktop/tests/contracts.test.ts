@@ -14,8 +14,8 @@ import {
   type LocalChangeDto,
 } from "../../../packages/contracts/src";
 
-describe("sync contracts", () => {
-  it("builds a versioned delta push request from local changes", () => {
+describe("同步契约", () => {
+  it("从本地变更构造带版本的 delta push 请求", () => {
     const changes: LocalChangeDto[] = [
       {
         id: "change-1",
@@ -43,7 +43,7 @@ describe("sync contracts", () => {
     });
   });
 
-  it("builds a versioned delta pull request with nullable cursor", () => {
+  it("构造允许空 cursor 的带版本 delta pull 请求", () => {
     expect(
       createDeltaPullRequest({
         workspaceId: "local",
@@ -58,7 +58,7 @@ describe("sync contracts", () => {
     });
   });
 
-  it("builds a task conflict DTO for manual sync resolution", () => {
+  it("构造用于人工同步解决的任务冲突 DTO", () => {
     expect(
       createTaskConflict({
         id: "conflict-1",
@@ -82,7 +82,7 @@ describe("sync contracts", () => {
     });
   });
 
-  it("builds a versioned conflict resolution request", () => {
+  it("构造带版本的冲突解决请求", () => {
     expect(
       createResolveTaskConflictRequest({
         workspaceId: "local",
@@ -103,7 +103,7 @@ describe("sync contracts", () => {
     });
   });
 
-  it("builds a versioned conflict list request", () => {
+  it("构造带版本的冲突列表请求", () => {
     expect(
       createListTaskConflictsRequest({
         workspaceId: "local",
@@ -116,7 +116,7 @@ describe("sync contracts", () => {
     });
   });
 
-  it("builds realtime sync event envelopes and catch-up requests", () => {
+  it("构造实时同步事件 envelope 和补拉请求", () => {
     expect(
       createSyncEvent({
         id: "event-1",
@@ -155,19 +155,19 @@ describe("sync contracts", () => {
     });
   });
 
-  it("builds local notification queue envelopes and acknowledgement requests", () => {
+  it("构造本地通知队列 envelope 和确认请求", () => {
     expect(
       createNotification({
         id: "notification-1",
         workspaceId: "local",
         type: "conflict.raised",
-        title: "Sync conflict needs review",
-        body: "Task changed in two places",
+        title: "同步冲突需要处理",
+        body: "任务在两处发生变更",
         sourceEventId: "event-3",
         taskId: "task-1",
         changeId: "change-3",
         conflictId: "conflict-change-3",
-        payload: { reason: "Task version conflict" },
+        payload: { reason: "任务版本冲突" },
         now: new Date("2026-05-16T08:00:00.000Z"),
       }),
     ).toEqual({
@@ -175,13 +175,13 @@ describe("sync contracts", () => {
       workspaceId: "local",
       type: "conflict.raised",
       status: "queued",
-      title: "Sync conflict needs review",
-      body: "Task changed in two places",
+      title: "同步冲突需要处理",
+      body: "任务在两处发生变更",
       sourceEventId: "event-3",
       taskId: "task-1",
       changeId: "change-3",
       conflictId: "conflict-change-3",
-      payload: { reason: "Task version conflict" },
+      payload: { reason: "任务版本冲突" },
       createdAt: "2026-05-16T08:00:00.000Z",
       acknowledgedAt: null,
     });

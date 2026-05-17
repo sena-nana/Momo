@@ -14,8 +14,8 @@ import {
   type SyncStateRow,
 } from "../src/data/taskRepository";
 
-describe("task domain", () => {
-  it("normalizes create input and rejects blank titles", () => {
+describe("任务领域", () => {
+  it("规范化创建输入并拒绝空白标题", () => {
     expect(normalizeCreateTaskInput({ title: "  Draft plan  " })).toMatchObject({
       title: "Draft plan",
       notes: null,
@@ -26,11 +26,11 @@ describe("task domain", () => {
     });
 
     expect(() => normalizeCreateTaskInput({ title: "   " })).toThrow(
-      "Task title is required",
+      "任务标题不能为空",
     );
   });
 
-  it("maps SQLite rows into task objects", () => {
+  it("将 SQLite 行映射为任务对象", () => {
     expect(
       mapTaskRow({
         id: "task-1",
@@ -60,7 +60,7 @@ describe("task domain", () => {
     });
   });
 
-  it("groups today's active, overdue, and completed tasks", () => {
+  it("分组今日未完成、逾期和已完成任务", () => {
     const now = new Date("2026-05-16T12:00:00+08:00");
     const groups = groupTodayTasks(
       [
@@ -82,8 +82,8 @@ describe("task domain", () => {
   });
 });
 
-describe("TaskRepository", () => {
-  it("initializes schema and loads the fixed momo database", async () => {
+describe("TaskRepository 仓储", () => {
+  it("初始化 schema 并加载固定 momo 数据库", async () => {
     const db = new RecordingDatabase();
     const repository = createTaskRepository(() => Promise.resolve(db));
 
@@ -98,7 +98,7 @@ describe("TaskRepository", () => {
     expect(db.executedSql.join("\n")).toContain("CREATE TABLE IF NOT EXISTS task_sync_versions");
   });
 
-  it("creates a normalized active task row and records a local change", async () => {
+  it("创建规范化 active 任务行并记录本地变更", async () => {
     const db = new RecordingDatabase();
     const repository = createTaskRepository(() => Promise.resolve(db), {
       now: () => new Date("2026-05-16T04:00:00.000Z"),
@@ -146,7 +146,7 @@ describe("TaskRepository", () => {
     ]);
   });
 
-  it("lists pending local changes and marks them synced", async () => {
+  it("列出待同步本地变更并标记 synced", async () => {
     const db = new RecordingDatabase({
       localChanges: [
         {
@@ -184,7 +184,7 @@ describe("TaskRepository", () => {
     ]);
   });
 
-  it("loads database stats with pending local changes", async () => {
+  it("加载带待同步本地变更的数据库统计", async () => {
     const db = new RecordingDatabase({
       stats: [
         {
@@ -206,7 +206,7 @@ describe("TaskRepository", () => {
     });
   });
 
-  it("loads and saves local sync cursor state", async () => {
+  it("加载并保存本地同步 cursor 状态", async () => {
     const db = new RecordingDatabase({
       syncState: [
         {
@@ -251,7 +251,7 @@ describe("TaskRepository", () => {
     ]);
   });
 
-  it("returns an empty local sync state before the first sync", async () => {
+  it("首次同步前返回空本地同步状态", async () => {
     const repository = createTaskRepository(
       () => Promise.resolve(new RecordingDatabase()),
     );
@@ -264,7 +264,7 @@ describe("TaskRepository", () => {
     });
   });
 
-  it("records and lists recent sync runs", async () => {
+  it("记录并列出最近同步运行", async () => {
     const db = new RecordingDatabase({
       syncRuns: [
         {
@@ -280,7 +280,7 @@ describe("TaskRepository", () => {
           status: "succeeded",
           started_at: "2026-05-16T12:00:00.000Z",
           finished_at: "2026-05-16T12:00:05.000Z",
-          message: "Already synced",
+          message: "已完成同步",
           server_cursor: "cursor-8",
         },
       ],
@@ -296,7 +296,7 @@ describe("TaskRepository", () => {
         status: "succeeded",
         startedAt: "2026-05-16T12:05:00.000Z",
         finishedAt: "2026-05-16T12:05:04.000Z",
-        message: "1 local change synced",
+        message: "已同步 1 个本地变更",
         serverCursor: "cursor-9",
       }),
     ).resolves.toEqual({
@@ -304,7 +304,7 @@ describe("TaskRepository", () => {
       status: "succeeded",
       startedAt: "2026-05-16T12:05:00.000Z",
       finishedAt: "2026-05-16T12:05:04.000Z",
-      message: "1 local change synced",
+      message: "已同步 1 个本地变更",
       serverCursor: "cursor-9",
     });
     expect(db.paramsForSql("INSERT INTO sync_runs")).toEqual([
@@ -312,7 +312,7 @@ describe("TaskRepository", () => {
       "succeeded",
       "2026-05-16T12:05:00.000Z",
       "2026-05-16T12:05:04.000Z",
-      "1 local change synced",
+      "已同步 1 个本地变更",
       "cursor-9",
     ]);
 
@@ -330,14 +330,14 @@ describe("TaskRepository", () => {
         status: "succeeded",
         startedAt: "2026-05-16T12:00:00.000Z",
         finishedAt: "2026-05-16T12:00:05.000Z",
-        message: "Already synced",
+        message: "已完成同步",
         serverCursor: "cursor-8",
       },
     ]);
     expect(db.paramsForSql("SELECT * FROM sync_runs")).toEqual([2]);
   });
 
-  it("applies pulled remote task changes without recording local changes", async () => {
+  it("应用拉取的远端任务变更且不记录本地变更", async () => {
     const db = new RecordingDatabase();
     const repository = createTaskRepository(() => Promise.resolve(db));
 
@@ -372,7 +372,7 @@ describe("TaskRepository", () => {
       .toBe(false);
   });
 
-  it("stores pulled remote task versions outside the task UI model", async () => {
+  it("在任务 UI 模型外存储拉取的远端任务版本", async () => {
     const db = new RecordingDatabase();
     const repository = createTaskRepository(() => Promise.resolve(db), {
       now: () => new Date("2026-05-16T12:00:00.000Z"),
@@ -404,7 +404,7 @@ describe("TaskRepository", () => {
       .toBe(false);
   });
 
-  it("records baseVersion on local updates when a remote version is known", async () => {
+  it("已知远端版本时在本地更新中记录 baseVersion", async () => {
     const db = new RecordingDatabase({
       taskRows: [
         taskRow({
@@ -443,7 +443,7 @@ describe("TaskRepository", () => {
     });
   });
 
-  it("records baseVersion on local status changes when a remote version is known", async () => {
+  it("已知远端版本时在本地状态变更中记录 baseVersion", async () => {
     const db = new RecordingDatabase({
       taskRows: [
         taskRow({
@@ -484,7 +484,7 @@ describe("TaskRepository", () => {
     });
   });
 
-  it("applies pulled remote task deletions without recording local changes", async () => {
+  it("应用拉取的远端任务删除且不记录本地变更", async () => {
     const db = new RecordingDatabase();
     const repository = createTaskRepository(() => Promise.resolve(db));
 

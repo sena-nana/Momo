@@ -19,7 +19,7 @@ export function createRemoteSyncConfig(env: RemoteSyncEnv): RemoteSyncConfig {
   if (!baseUrl) {
     return {
       enabled: false,
-      reason: "Remote sync base URL is not configured",
+      reason: "未配置远程同步 base URL",
     };
   }
 

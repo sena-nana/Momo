@@ -32,7 +32,7 @@ async function load() {
 }
 
 function formatAgendaDate(value: string | null) {
-  if (!value) return "Unscheduled";
+  if (!value) return "未安排";
   return new Intl.DateTimeFormat(undefined, {
     weekday: "short",
     month: "short",
@@ -41,29 +41,33 @@ function formatAgendaDate(value: string | null) {
     minute: "2-digit",
   }).format(new Date(value));
 }
+
+function displayError(value: string) {
+  return value.replace(/^Error:\s*/, "错误：");
+}
 </script>
 
 <template>
   <section class="page">
     <header class="page__head">
-      <h1>Calendar</h1>
-      <span class="page__sub">Next 7 days</span>
+      <h1>日历</h1>
+      <span class="page__sub">未来 7 天</span>
     </header>
 
     <div v-if="loading" class="card state">
       <Loader2 class="spin" :size="18" aria-hidden="true" />
-      <p>Loading agenda...</p>
+      <p>正在加载日程...</p>
     </div>
     <div v-if="error" class="card state state--error">
-      <p>{{ error }}</p>
+      <p>{{ displayError(error) }}</p>
       <button type="button" @click="load">
         <RefreshCw :size="16" aria-hidden="true" />
-        Retry
+        重试
       </button>
     </div>
     <div v-if="!loading && !error && tasks.length === 0" class="card empty">
       <CalendarDays :size="20" aria-hidden="true" />
-      <p>No scheduled tasks in the next 7 days.</p>
+      <p>未来 7 天暂无已安排任务。</p>
     </div>
     <ol v-if="!loading && !error && tasks.length > 0" class="timeline">
       <li v-for="task in tasks" :key="task.id" class="timeline__item">

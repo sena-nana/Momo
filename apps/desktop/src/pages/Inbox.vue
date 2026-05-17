@@ -114,28 +114,32 @@ function estimateInputToNumber(value: string) {
   const parsed = Number(value);
   return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
 }
+
+function displayError(value: string) {
+  return value.replace(/^Error:\s*/, "错误：");
+}
 </script>
 
 <template>
   <section class="page">
     <header class="page__head">
-      <h1>Inbox</h1>
+      <h1>收件箱</h1>
       <span class="page__sub">未分类任务 · 无截止时间的本地队列</span>
     </header>
 
     <div v-if="loading" class="card state">
       <Loader2 class="spin" :size="18" aria-hidden="true" />
-      <p>Loading inbox...</p>
+      <p>正在加载收件箱...</p>
     </div>
     <div v-if="error" class="card state state--error">
-      <p>{{ error }}</p>
+      <p>{{ displayError(error) }}</p>
       <button type="button" @click="load">
         <RefreshCw :size="16" aria-hidden="true" />
-        Retry
+        重试
       </button>
     </div>
     <div v-if="!loading && !error && tasks.length === 0" class="card empty">
-      <p>No inbox tasks. Add one from Today and choose Inbox.</p>
+      <p>收件箱暂无任务。可在今日页添加任务并选择收件箱。</p>
     </div>
     <ul
       v-if="!loading && !error && tasks.length > 0"
@@ -153,16 +157,16 @@ function estimateInputToNumber(value: string) {
         >
           <input
             v-model="draft.title"
-            :aria-label="`Edit ${task.title} title`"
+            :aria-label="`编辑 ${task.title} 标题`"
           />
           <input
             v-model="draft.notes"
-            :aria-label="`Edit ${task.title} notes`"
-            placeholder="Notes"
+            :aria-label="`编辑 ${task.title} 备注`"
+            placeholder="备注"
           />
           <select
             v-model.number="draft.priority"
-            :aria-label="`Edit ${task.title} priority`"
+            :aria-label="`编辑 ${task.title} 优先级`"
           >
             <option :value="0">P0</option>
             <option :value="1">P1</option>
@@ -171,23 +175,23 @@ function estimateInputToNumber(value: string) {
           </select>
           <input
             v-model="draft.dueAtInput"
-            :aria-label="`Edit ${task.title} due date`"
+            :aria-label="`编辑 ${task.title} 截止时间`"
             type="datetime-local"
           />
           <input
             v-model="draft.estimateInput"
-            :aria-label="`Edit ${task.title} estimate minutes`"
+            :aria-label="`编辑 ${task.title} 估时分钟`"
             type="number"
             min="1"
             step="1"
             placeholder="min"
           />
-          <button type="submit" :aria-label="`Save ${task.title}`">
+          <button type="submit" :aria-label="`保存 ${task.title}`">
             <Save :size="16" aria-hidden="true" />
           </button>
           <button
             type="button"
-            :aria-label="`Cancel ${task.title}`"
+            :aria-label="`取消 ${task.title}`"
             @click="editing = null"
           >
             <X :size="16" aria-hidden="true" />
@@ -205,7 +209,7 @@ function estimateInputToNumber(value: string) {
             <button
               type="button"
               class="icon-button"
-              :aria-label="`Complete ${task.title}`"
+              :aria-label="`完成 ${task.title}`"
               @click="completeTask(task)"
             >
               <Check :size="16" aria-hidden="true" />
@@ -213,7 +217,7 @@ function estimateInputToNumber(value: string) {
             <button
               type="button"
               class="icon-button"
-              :aria-label="`Edit ${task.title}`"
+              :aria-label="`编辑 ${task.title}`"
               @click="beginEdit(task)"
             >
               <Pencil :size="16" aria-hidden="true" />
@@ -221,7 +225,7 @@ function estimateInputToNumber(value: string) {
             <button
               type="button"
               class="icon-button icon-button--danger"
-              :aria-label="`Delete ${task.title}`"
+              :aria-label="`删除 ${task.title}`"
               @click="deleteTask(task)"
             >
               <Trash2 :size="16" aria-hidden="true" />

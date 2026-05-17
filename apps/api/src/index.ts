@@ -370,7 +370,7 @@ export function projectSyncEventToNotification(
     return {
       workspaceId: event.workspaceId,
       type: "conflict.raised",
-      title: "Sync conflict needs review",
+      title: "同步冲突需要处理",
       body: reason,
       sourceEventId: event.id,
       taskId: event.taskId,
@@ -391,7 +391,7 @@ export function projectSyncEventToNotification(
     return {
       workspaceId: event.workspaceId,
       type: "sync.run.failed",
-      title: "Sync failed",
+      title: "同步失败",
       body: message,
       sourceEventId: event.id,
       payload: {
@@ -536,7 +536,7 @@ export function createInMemoryNotificationStore(): NotificationStore {
         (notification) => notification.id === notificationId,
       );
       if (index < 0) {
-        throw new Error("Notification not found");
+        throw new Error("通知不存在");
       }
 
       const notification = {
@@ -575,7 +575,7 @@ export function createInMemorySyncStore(): SyncStore {
       const workspace = workspaceFor(workspaceId);
 
       if (change.entityType !== "task") {
-        throw new Error("Unsupported entity type");
+        throw new Error("不支持的实体类型");
       }
       if (workspace.appliedChangeIds.has(change.id)) {
         return { applied: false };
@@ -649,7 +649,7 @@ export function createInMemorySyncStore(): SyncStore {
       const workspace = workspaceFor(workspaceId);
       const conflict = workspace.conflicts.get(request.conflictId);
       if (!conflict) {
-        throw new Error("Conflict not found");
+        throw new Error("冲突不存在");
       }
 
       if (request.strategy === "server_wins") {
@@ -664,7 +664,7 @@ export function createInMemorySyncStore(): SyncStore {
       if (request.strategy === "client_wins") {
         const existing = conflict.serverTask ?? workspace.tasks.get(conflict.taskId);
         if (!existing) {
-          throw new Error("Task not found");
+          throw new Error("任务不存在");
         }
         const version = workspace.version + 1;
         const task = applyClientConflictPayload({
@@ -698,7 +698,7 @@ export function createInMemorySyncStore(): SyncStore {
 
 function assertSupportedContract(contractVersion: number) {
   if (contractVersion !== SYNC_CONTRACT_VERSION) {
-    throw new Error("Unsupported sync contract version");
+    throw new Error("不支持的同步契约版本");
   }
 }
 
@@ -744,18 +744,18 @@ async function publishConflictRaisedEvent(
 
 function normalizeTaskPayload(payload: unknown, entityId: string): TaskPayload {
   if (!payload || typeof payload !== "object") {
-    throw new Error("Task payload must be an object");
+    throw new Error("任务 payload 必须是对象");
   }
 
   const candidate = payload as Partial<TaskPayload>;
   if (candidate.id && candidate.id !== entityId) {
-    throw new Error("Task payload id must match entity id");
+    throw new Error("任务 payload id 必须匹配实体 id");
   }
   if (!candidate.title?.trim()) {
-    throw new Error("Task title is required");
+    throw new Error("任务标题不能为空");
   }
   if (!candidate.createdAt || !candidate.updatedAt) {
-    throw new Error("Task timestamps are required");
+    throw new Error("任务时间戳不能为空");
   }
 
   return {
@@ -792,7 +792,7 @@ function applyTaskChange(input: {
   }
 
   if (!input.existing) {
-    throw new Error("Task must exist before applying this change");
+    throw new Error("应用此变更前任务必须存在");
   }
 
   if (input.action === "task.update") {
@@ -820,7 +820,7 @@ function applyTaskChange(input: {
     };
   }
 
-  throw new Error("Unsupported task action");
+  throw new Error("不支持的任务动作");
 }
 
 function normalizeTaskUpdatePayload(
@@ -828,16 +828,16 @@ function normalizeTaskUpdatePayload(
   entityId: string,
 ): TaskUpdatePayload {
   if (!payload || typeof payload !== "object") {
-    throw new Error("Task update payload must be an object");
+    throw new Error("任务更新 payload 必须是对象");
   }
 
   const candidate = payload as Partial<TaskUpdatePayload>;
   assertMatchingPayloadId(candidate.id, entityId);
   if (!candidate.updatedAt) {
-    throw new Error("Task update timestamp is required");
+    throw new Error("任务更新时间戳不能为空");
   }
   if (!candidate.patch || typeof candidate.patch !== "object") {
-    throw new Error("Task update patch is required");
+    throw new Error("任务更新 patch 不能为空");
   }
 
   return {
@@ -853,16 +853,16 @@ function normalizeTaskStatusPayload(
   entityId: string,
 ): TaskStatusPayload {
   if (!payload || typeof payload !== "object") {
-    throw new Error("Task status payload must be an object");
+    throw new Error("任务状态 payload 必须是对象");
   }
 
   const candidate = payload as Partial<TaskStatusPayload>;
   assertMatchingPayloadId(candidate.id, entityId);
   if (!candidate.status) {
-    throw new Error("Task status is required");
+    throw new Error("任务状态不能为空");
   }
   if (!candidate.updatedAt) {
-    throw new Error("Task status timestamp is required");
+    throw new Error("任务状态更新时间戳不能为空");
   }
 
   return {
@@ -891,7 +891,7 @@ function detectVersionConflict(input: {
     workspaceId: input.workspaceId,
     taskId: input.change.entityId,
     changeId: input.change.id,
-    reason: "Task version conflict",
+    reason: "任务版本冲突",
     clientPayload: input.change.payload,
     serverTask: input.existing,
     now: input.now,
@@ -912,7 +912,7 @@ function applyClientConflictPayload(input: {
   version: number;
 }) {
   if (!input.payload || typeof input.payload !== "object") {
-    throw new Error("Task conflict payload must be an object");
+    throw new Error("任务冲突 payload 必须是对象");
   }
 
   if ("patch" in input.payload) {
@@ -940,7 +940,7 @@ function applyClientConflictPayload(input: {
     };
   }
 
-  throw new Error("Unsupported conflict payload");
+  throw new Error("不支持的冲突 payload");
 }
 
 function normalizeTaskPatch(patch: TaskUpdatePayload["patch"]) {
@@ -948,7 +948,7 @@ function normalizeTaskPatch(patch: TaskUpdatePayload["patch"]) {
   if ("title" in patch) {
     const title = patch.title?.trim() ?? "";
     if (!title) {
-      throw new Error("Task title is required");
+      throw new Error("任务标题不能为空");
     }
     normalized.title = title;
   }
@@ -964,7 +964,7 @@ function normalizeTaskPatch(patch: TaskUpdatePayload["patch"]) {
 
 function assertMatchingPayloadId(id: string | undefined, entityId: string) {
   if (id && id !== entityId) {
-    throw new Error("Task payload id must match entity id");
+    throw new Error("任务 payload id 必须匹配实体 id");
   }
 }
 

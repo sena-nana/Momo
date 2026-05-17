@@ -56,7 +56,7 @@ export interface TaskRow {
 export function normalizeCreateTaskInput(input: CreateTaskInput) {
   const title = input.title.trim();
   if (!title) {
-    throw new Error("Task title is required");
+    throw new Error("任务标题不能为空");
   }
 
   return {
@@ -75,7 +75,7 @@ export function normalizeUpdateTaskInput(input: UpdateTaskInput) {
   if ("title" in input) {
     const title = input.title?.trim() ?? "";
     if (!title) {
-      throw new Error("Task title is required");
+      throw new Error("任务标题不能为空");
     }
     patch.title = title;
   }
@@ -160,7 +160,7 @@ function normalizeNullableIso(value: string | null | undefined) {
   if (!value) return null;
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) {
-    throw new Error("Task date must be a valid ISO date");
+    throw new Error("任务时间必须是有效的 ISO 日期");
   }
   return date.toISOString();
 }
@@ -168,7 +168,7 @@ function normalizeNullableIso(value: string | null | undefined) {
 function normalizeEstimate(value: number | null | undefined) {
   if (value == null) return null;
   if (!Number.isInteger(value) || value <= 0) {
-    throw new Error("Task estimate must be a positive integer");
+    throw new Error("任务估时必须是正整数");
   }
   return value;
 }
@@ -176,7 +176,7 @@ function normalizeEstimate(value: number | null | undefined) {
 function normalizePriority(value: number | null | undefined): TaskPriority {
   const priority = value ?? 0;
   if (![0, 1, 2, 3].includes(priority)) {
-    throw new Error("Task priority must be between 0 and 3");
+    throw new Error("任务优先级必须在 0 到 3 之间");
   }
   return priority as TaskPriority;
 }

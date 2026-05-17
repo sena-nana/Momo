@@ -3,12 +3,28 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-describe("test tooling", () => {
-  it("runs under Vitest", () => {
+describe("测试工具链", () => {
+  it("运行在 Vitest 下", () => {
     expect(true).toBe(true);
   });
 
-  it("keeps the desktop UI stack on Vue instead of React", () => {
+  it("记录中文文本开发规范", () => {
+    const workspaceRoot = resolve(
+      dirname(fileURLToPath(import.meta.url)),
+      "../../..",
+    );
+    const standard = readFileSync(resolve(workspaceRoot, "AGENTS.md"), "utf-8");
+
+    expect(standard).toContain("中文文本开发规范");
+    expect(standard).toContain(
+      "页面文本、注释、测试描述、测试断言和文档默认使用中文",
+    );
+    expect(standard).toContain(
+      "工程标识符、外部协议字段、路由、命令和环境变量保持英文",
+    );
+  });
+
+  it("保持桌面端 UI 技术栈使用 Vue 而非 React", () => {
     const packagePath = resolve(
       dirname(fileURLToPath(import.meta.url)),
       "../package.json",
@@ -31,7 +47,7 @@ describe("test tooling", () => {
     expect(dependencies["@vitejs/plugin-react"]).toBeUndefined();
   });
 
-  it("keeps desktop source files free of React TSX entrypoints", () => {
+  it("确保桌面端源码不包含 React TSX 入口", () => {
     const desktopRoot = resolve(
       dirname(fileURLToPath(import.meta.url)),
       "..",
@@ -54,7 +70,7 @@ describe("test tooling", () => {
     ).toEqual([]);
   });
 
-  it("keeps the default settings route out of the remote runner factory", () => {
+  it("确保默认设置页路由不接入远程 runner 工厂", () => {
     const desktopRoot = resolve(
       dirname(fileURLToPath(import.meta.url)),
       "..",

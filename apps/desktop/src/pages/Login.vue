@@ -18,7 +18,7 @@ function onSubmit() {
         OIDC / Passkeys 登录链路待接入（BE-01）。当前为占位入口。
       </p>
       <label class="auth__label">
-        Email
+        邮箱
         <input
           v-model="email"
           type="email"
@@ -26,7 +26,7 @@ function onSubmit() {
           required
         />
       </label>
-      <button type="submit">Continue</button>
+      <button type="submit">继续</button>
     </form>
   </div>
 </template>

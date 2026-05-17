@@ -21,8 +21,8 @@ import {
   type LocalChangeDto,
 } from "../../../packages/contracts/src";
 
-describe("API route adapter skeleton", () => {
-  it("exports a route manifest for every supported HTTP-like endpoint", () => {
+describe("API 路由适配器骨架", () => {
+  it("导出所有支持的 HTTP-like endpoint 路由清单", () => {
     expect(API_ROUTES.map((route) => `${route.method} ${route.path}`)).toEqual([
       "GET /tasks",
       "POST /tasks",
@@ -39,7 +39,7 @@ describe("API route adapter skeleton", () => {
     ]);
   });
 
-  it("routes task create and list requests with actor headers", async () => {
+  it("使用 actor headers 分派任务创建和列表请求", async () => {
     const router = createRouter();
 
     const createResponse = await router.handle({
@@ -80,7 +80,7 @@ describe("API route adapter skeleton", () => {
     });
   });
 
-  it("routes sync delta push and pull requests", async () => {
+  it("分派同步 delta push 和 pull 请求", async () => {
     const router = createRouter();
     const change: LocalChangeDto = {
       id: "change-1",
@@ -142,7 +142,7 @@ describe("API route adapter skeleton", () => {
     });
   });
 
-  it("returns structured errors for invalid JSON and forbidden actors", async () => {
+  it("为无效 JSON 和禁止写入的 actor 返回结构化错误", async () => {
     const router = createRouter();
 
     await expect(
@@ -154,7 +154,7 @@ describe("API route adapter skeleton", () => {
       }),
     ).resolves.toEqual({
       status: 400,
-      body: { error: "Invalid JSON body" },
+      body: { error: "JSON 请求体无效" },
     });
 
     await expect(
@@ -166,11 +166,11 @@ describe("API route adapter skeleton", () => {
       }),
     ).resolves.toEqual({
       status: 403,
-      body: { error: "Actor cannot write tasks" },
+      body: { error: "当前操作者不能写入任务" },
     });
   });
 
-  it("routes sync conflict resolution requests", async () => {
+  it("分派同步冲突解决请求", async () => {
     const router = createRouter();
     await router.handle({
       method: "POST",
@@ -228,7 +228,7 @@ describe("API route adapter skeleton", () => {
     });
   });
 
-  it("maps missing conflict resolution requests to a 404", async () => {
+  it("把不存在的冲突解决请求映射为 404", async () => {
     const router = createRouter();
 
     await expect(
@@ -245,11 +245,11 @@ describe("API route adapter skeleton", () => {
       }),
     ).resolves.toEqual({
       status: 404,
-      body: { error: "Conflict not found" },
+      body: { error: "冲突不存在" },
     });
   });
 
-  it("routes manual conflict resolution as an accepted pending decision", async () => {
+  it("把人工冲突解决分派为已接受的待处理决策", async () => {
     const router = createRouter();
     await router.handle({
       method: "POST",
@@ -307,7 +307,7 @@ describe("API route adapter skeleton", () => {
     });
   });
 
-  it("routes pending sync conflict list requests", async () => {
+  it("分派待处理同步冲突列表请求", async () => {
     const router = createRouter();
     await router.handle({
       method: "POST",
@@ -366,7 +366,7 @@ describe("API route adapter skeleton", () => {
     });
   });
 
-  it("routes realtime sync event catch-up requests without opening WebSockets", async () => {
+  it("分派实时同步事件补拉请求且不打开 WebSocket", async () => {
     const router = createRouter();
 
     await expect(
@@ -396,7 +396,7 @@ describe("API route adapter skeleton", () => {
     });
   });
 
-  it("routes sync-generated realtime events through the catch-up endpoint", async () => {
+  it("通过补拉 endpoint 分派同步生成的实时事件", async () => {
     const eventApi = createSyncEventApi({
       store: createInMemorySyncEventStore(),
       now: () => new Date("2026-05-16T12:00:00.000Z"),
@@ -453,7 +453,7 @@ describe("API route adapter skeleton", () => {
     });
   });
 
-  it("routes local notification list and acknowledgement requests", async () => {
+  it("分派本地通知列表和确认请求", async () => {
     const router = createRouter();
 
     await expect(
@@ -476,7 +476,7 @@ describe("API route adapter skeleton", () => {
             workspaceId: "workspace-a",
             type: "conflict.raised",
             status: "queued",
-            title: "Sync conflict needs review",
+            title: "同步冲突需要处理",
           },
         ],
       },
@@ -545,13 +545,13 @@ function seededNotificationApi() {
   void notificationApi.enqueueNotification({
     workspaceId: "workspace-a",
     type: "conflict.raised",
-    title: "Sync conflict needs review",
-    body: "Task changed in two places",
+    title: "同步冲突需要处理",
+    body: "任务在两处发生变更",
     sourceEventId: "event-3",
     taskId: "task-1",
     changeId: "change-3",
     conflictId: "conflict-change-3",
-    payload: { reason: "Task version conflict" },
+    payload: { reason: "任务版本冲突" },
   });
   return notificationApi;
 }

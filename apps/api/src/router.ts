@@ -91,7 +91,7 @@ export function createApiRouter({
           );
         }
 
-        return json(404, { error: "Route not found" });
+        return json(404, { error: "路由不存在" });
       } catch (error) {
         return errorResponse(error);
       }
@@ -139,7 +139,7 @@ async function handleTaskRoute(
     return json(204, null);
   }
 
-  return json(404, { error: "Route not found" });
+  return json(404, { error: "路由不存在" });
 }
 
 async function handleSyncRoute(
@@ -170,12 +170,12 @@ async function handleSyncRoute(
 
   if (request.method === "GET" && segments.join("/") === "sync/events") {
     if (!syncEventApi) {
-      throw new Error("Sync event API not configured");
+      throw new Error("未配置同步事件 API");
     }
     return json(200, await syncEventApi.listEvents(body as ListSyncEventsRequest));
   }
 
-  return json(404, { error: "Route not found" });
+  return json(404, { error: "路由不存在" });
 }
 
 async function handleNotificationRoute(
@@ -185,7 +185,7 @@ async function handleNotificationRoute(
   body: unknown,
 ) {
   if (!notificationApi) {
-    throw new Error("Notification API not configured");
+    throw new Error("未配置通知 API");
   }
 
   if (request.method === "GET" && segments.length === 1) {
@@ -198,12 +198,12 @@ async function handleNotificationRoute(
   if (request.method === "POST" && segments.length === 3 && segments[2] === "ack") {
     const ackRequest = body as AcknowledgeNotificationRequest;
     if (ackRequest.notificationId !== segments[1]) {
-      throw new Error("Notification id mismatch");
+      throw new Error("通知 id 不匹配");
     }
     return json(200, await notificationApi.acknowledgeNotification(ackRequest));
   }
 
-  return json(404, { error: "Route not found" });
+  return json(404, { error: "路由不存在" });
 }
 
 function actorFromHeaders(headers: ApiRequest["headers"]): TaskActor {
@@ -212,10 +212,10 @@ function actorFromHeaders(headers: ApiRequest["headers"]): TaskActor {
   const role = headers?.["x-role"];
 
   if (!workspaceId || !userId || !role) {
-    throw new Error("Missing actor headers");
+    throw new Error("缺少操作者请求头");
   }
   if (!isTaskActorRole(role)) {
-    throw new Error("Invalid actor role");
+    throw new Error("操作者角色无效");
   }
 
   return { workspaceId, userId, role };
@@ -226,13 +226,13 @@ function parseBody(body: unknown) {
   try {
     return JSON.parse(body);
   } catch {
-    throw new Error("Invalid JSON body");
+    throw new Error("JSON 请求体无效");
   }
 }
 
 function requireStatus(body: { status?: Parameters<TaskService["setStatus"]>[2] }) {
   if (!body.status) {
-    throw new Error("Task status is required");
+    throw new Error("任务状态不能为空");
   }
   return body.status;
 }
@@ -243,22 +243,22 @@ function isTaskActorRole(role: string): role is TaskActorRole {
 
 function errorResponse(error: unknown) {
   const message = error instanceof Error ? error.message : String(error);
-  if (message === "Invalid JSON body" || message === "Invalid actor role") {
+  if (message === "JSON 请求体无效" || message === "操作者角色无效") {
     return json(400, { error: message });
   }
-  if (message === "Missing actor headers") {
+  if (message === "缺少操作者请求头") {
     return json(401, { error: message });
   }
-  if (message === "Actor cannot write tasks") {
+  if (message === "当前操作者不能写入任务") {
     return json(403, { error: message });
   }
   if (
-    message === "Task not found" ||
-    message === "Conflict not found" ||
-    message === "Notification not found" ||
-    message === "Sync event API not configured" ||
-    message === "Notification API not configured" ||
-    message === "Route not found"
+    message === "任务不存在" ||
+    message === "冲突不存在" ||
+    message === "通知不存在" ||
+    message === "未配置同步事件 API" ||
+    message === "未配置通知 API" ||
+    message === "路由不存在"
   ) {
     return json(404, { error: message });
   }

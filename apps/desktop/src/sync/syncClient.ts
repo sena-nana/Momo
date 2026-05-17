@@ -182,7 +182,7 @@ async function recordSyncRunBestEffort(
   try {
     await repository.recordSyncRun(input);
   } catch {
-    // Sync history is diagnostic only; do not hide the primary sync outcome.
+    // 同步历史仅用于诊断，不应遮蔽本次同步的主要结果。
   }
 }
 
@@ -193,7 +193,7 @@ async function saveSyncStateBestEffort(
   try {
     await repository.saveSyncState(state);
   } catch {
-    // Keep the original sync failure visible to callers even if state persistence fails.
+    // 即使状态持久化失败，也要让调用方看到原始同步失败。
   }
 }
 
@@ -327,7 +327,7 @@ export function summarizeDeltaPushResponse(
   if (conflictCount > 0) {
     return {
       status: "has-conflicts",
-      message: `${conflictCount} sync conflict${conflictCount === 1 ? "" : "s"} needs review`,
+      message: `${conflictCount} 个同步冲突需要处理`,
       acceptedCount,
       rejectedCount,
       conflictCount,
@@ -338,7 +338,7 @@ export function summarizeDeltaPushResponse(
   if (rejectedCount > 0) {
     return {
       status: "has-rejections",
-      message: `${rejectedCount} local change${rejectedCount === 1 ? "" : "s"} needs retry or repair`,
+      message: `${rejectedCount} 个本地变更需要重试或修复`,
       acceptedCount,
       rejectedCount,
       conflictCount,
@@ -349,8 +349,8 @@ export function summarizeDeltaPushResponse(
   return {
     status: "all-synced",
     message: acceptedCount === 0
-      ? "Already synced"
-      : `${acceptedCount} local change${acceptedCount === 1 ? "" : "s"} synced`,
+      ? "已完成同步"
+      : `已同步 ${acceptedCount} 个本地变更`,
     acceptedCount,
     rejectedCount,
     conflictCount,
@@ -470,7 +470,7 @@ export async function fetchRealtimeEventCatchUp({
   if (!transport.listEvents) {
     return {
       enabled: false,
-      reason: "Realtime event catch-up is not available",
+      reason: "实时事件补拉不可用",
       latestSequence: afterSequence,
       events: [],
     };
@@ -557,7 +557,7 @@ function summarizeClientPayload(payload: unknown) {
     ([key]) => key !== "id" && key !== "baseVersion" && key !== "updatedAt",
   );
   if (entries.length === 0) {
-    return "empty payload";
+    return "空 payload";
   }
 
   return entries

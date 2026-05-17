@@ -5,8 +5,8 @@ import {
   type TaskActor,
 } from "../../../apps/api/src";
 
-describe("Core API task service skeleton", () => {
-  it("creates, updates, completes, deletes, and lists workspace-scoped tasks", async () => {
+describe("核心 API 任务服务骨架", () => {
+  it("创建、更新、完成、删除并列出 workspace 范围内的任务", async () => {
     const service = createTaskService({
       repository: createInMemoryTaskRepository(),
       now: () => new Date("2026-05-16T12:00:00.000Z"),
@@ -61,7 +61,7 @@ describe("Core API task service skeleton", () => {
     await expect(service.listTasks(actor)).resolves.toEqual([]);
   });
 
-  it("rejects writes from read-only actors", async () => {
+  it("拒绝只读 actor 的写入", async () => {
     const service = createTaskService({
       repository: createInMemoryTaskRepository(),
       now: () => new Date("2026-05-16T12:00:00.000Z"),
@@ -70,10 +70,10 @@ describe("Core API task service skeleton", () => {
 
     await expect(
       service.createTask(viewer("workspace-a"), { title: "Read only" }),
-    ).rejects.toThrow("Actor cannot write tasks");
+    ).rejects.toThrow("当前操作者不能写入任务");
   });
 
-  it("rejects blank task titles", async () => {
+  it("拒绝空白任务标题", async () => {
     const service = createTaskService({
       repository: createInMemoryTaskRepository(),
       now: () => new Date("2026-05-16T12:00:00.000Z"),
@@ -82,7 +82,7 @@ describe("Core API task service skeleton", () => {
 
     await expect(
       service.createTask(member("workspace-a"), { title: "   " }),
-    ).rejects.toThrow("Task title is required");
+    ).rejects.toThrow("任务标题不能为空");
   });
 });
 

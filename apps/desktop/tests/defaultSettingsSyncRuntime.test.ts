@@ -13,8 +13,8 @@ vi.mock("../src/sync/localSyncRunner", () => ({
   })),
 }));
 
-describe("default settings sync runtime", () => {
-  it("keeps the default settings runtime on the local runner only", () => {
+describe("默认设置页同步运行时", () => {
+  it("确保默认设置页运行时只使用本地 runner", () => {
     const repository = {
       listPendingChanges: vi.fn(),
       markChangeSynced: vi.fn(),

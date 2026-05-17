@@ -75,7 +75,7 @@ function defaultTodayDueAt() {
 }
 
 function formatDateTime(value: string | null) {
-  if (!value) return "No time";
+  if (!value) return "无时间";
   return new Intl.DateTimeFormat(undefined, {
     month: "short",
     day: "numeric",
@@ -88,31 +88,31 @@ function formatDateTime(value: string | null) {
 <template>
   <section class="page">
     <header class="page__head">
-      <h1>Today</h1>
+      <h1>今日</h1>
       <span class="page__sub">今日任务 · 逾期提醒 · 完成回看</span>
     </header>
 
     <form class="quick-add" @submit.prevent="onQuickAdd">
-      <label class="sr-only" for="today-quick-add">Quick add task</label>
+      <label class="sr-only" for="today-quick-add">快速添加任务</label>
       <div class="row">
         <input
           id="today-quick-add"
           v-model="title"
-          placeholder="Add a task for today"
+          placeholder="添加今日任务"
         />
-        <label class="sr-only" for="task-destination">Task destination</label>
+        <label class="sr-only" for="task-destination">任务归属</label>
         <select id="task-destination" v-model="destination">
-          <option value="today">Today</option>
-          <option value="inbox">Inbox</option>
+          <option value="today">今日</option>
+          <option value="inbox">收件箱</option>
         </select>
-        <label class="sr-only" for="task-due-at">Task due date</label>
+        <label class="sr-only" for="task-due-at">任务截止时间</label>
         <input
           id="task-due-at"
           v-model="dueAtInput"
           type="datetime-local"
           :disabled="destination === 'inbox'"
         />
-        <label class="sr-only" for="task-estimate">Task estimate minutes</label>
+        <label class="sr-only" for="task-estimate">任务估时分钟</label>
         <input
           id="task-estimate"
           v-model="estimateInput"
@@ -124,29 +124,29 @@ function formatDateTime(value: string | null) {
         />
         <button type="submit" :disabled="saving || !title.trim()">
           <Plus :size="16" aria-hidden="true" />
-          {{ destination === "today" ? "Add for today" : "Add task" }}
+          {{ destination === "today" ? "添加到今日" : "添加任务" }}
         </button>
       </div>
     </form>
 
     <div v-if="loading" class="card state">
       <Loader2 class="spin" :size="18" aria-hidden="true" />
-      <p>Loading local tasks...</p>
+      <p>正在加载本地任务...</p>
     </div>
     <div v-if="error" class="card state state--error">
       <p>{{ error }}</p>
       <button type="button" @click="load">
         <RefreshCw :size="16" aria-hidden="true" />
-        Retry
+        重试
       </button>
     </div>
 
     <div v-if="!loading && !error" class="task-grid">
       <section class="card task-section">
         <div class="section-title">
-          <h2>Overdue</h2>
+          <h2>已逾期</h2>
         </div>
-        <p v-if="groups.overdue.length === 0" class="empty-text">Nothing here.</p>
+        <p v-if="groups.overdue.length === 0" class="empty-text">暂无内容。</p>
         <ul v-else class="task-list">
           <li v-for="task in groups.overdue" :key="task.id" class="task-item">
             <span class="task-title is-danger">{{ task.title }}</span>
@@ -159,9 +159,9 @@ function formatDateTime(value: string | null) {
 
       <section class="card task-section">
         <div class="section-title">
-          <h2>Due today</h2>
+          <h2>今日到期</h2>
         </div>
-        <p v-if="groups.dueToday.length === 0" class="empty-text">Nothing here.</p>
+        <p v-if="groups.dueToday.length === 0" class="empty-text">暂无内容。</p>
         <ul v-else class="task-list">
           <li v-for="task in groups.dueToday" :key="task.id" class="task-item">
             <span class="task-title">{{ task.title }}</span>
@@ -174,11 +174,11 @@ function formatDateTime(value: string | null) {
 
       <section class="card task-section">
         <div class="section-title">
-          <h2>Completed today</h2>
+          <h2>今日完成</h2>
           <Check :size="16" aria-hidden="true" />
         </div>
         <p v-if="groups.completedToday.length === 0" class="empty-text">
-          Nothing here.
+          暂无内容。
         </p>
         <ul v-else class="task-list">
           <li

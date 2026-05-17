@@ -10,42 +10,41 @@ const checklistPath = resolve(
 );
 const readmePath = resolve(desktopRoot, "README.md");
 
-describe("local sync acceptance checklist", () => {
-  it("is linked from the README manual acceptance section", () => {
+describe("本地同步验收清单", () => {
+  it("被 README 手动验收章节链接", () => {
     const readme = readFileSync(readmePath, "utf-8");
 
     expect(readme).toContain("docs/local-sync-acceptance.md");
-    expect(readme).toContain("Local sync acceptance checklist");
+    expect(readme).toContain("本地同步验收清单");
   });
 
-  it("documents local-only Settings sync acceptance without real network", () => {
+  it("记录不使用真实网络的设置页本地同步验收", () => {
     expect(existsSync(checklistPath)).toBe(true);
 
     const checklist = readFileSync(checklistPath, "utf-8");
 
-    expect(checklist).toContain("# Local sync acceptance checklist");
-    expect(checklist).toContain("Scope");
-    expect(checklist).toContain("Vite smoke");
-    expect(checklist).toContain("Tauri WebView full SQLite flow");
-    expect(checklist).toContain("Remote config display smoke");
-    expect(checklist).toContain("Regression guardrails");
+    expect(checklist).toContain("# 本地同步验收清单");
+    expect(checklist).toContain("范围");
+    expect(checklist).toContain("Vite 冒烟");
+    expect(checklist).toContain("Tauri WebView 完整 SQLite 流程");
+    expect(checklist).toContain("远程配置展示冒烟");
+    expect(checklist).toContain("回归护栏");
     expect(checklist).toContain("http://localhost:1420/settings");
     expect(checklist).toContain("npm run tauri dev");
-    expect(checklist).toContain("Local sync simulation");
-    expect(checklist).toContain("Sync status");
-    expect(checklist).toContain("Sync state");
-    expect(checklist).toContain("Pending changes");
-    expect(checklist).toContain("Sync history");
-    expect(checklist).toContain("Sync rejections");
-    expect(checklist).toContain("Sync conflicts");
-    expect(checklist).toContain("Pull applied");
-    expect(checklist).toContain("Remote sync config");
-    expect(checklist).toContain("Sync action");
-    expect(checklist).toContain("Local simulation");
+    expect(checklist).toContain("本地同步模拟");
+    expect(checklist).toContain("同步状态");
+    expect(checklist).toContain("待同步变更");
+    expect(checklist).toContain("同步历史");
+    expect(checklist).toContain("同步拒绝");
+    expect(checklist).toContain("同步冲突");
+    expect(checklist).toContain("已应用拉取结果");
+    expect(checklist).toContain("远程同步配置");
+    expect(checklist).toContain("同步动作");
+    expect(checklist).toContain("本地模拟");
     expect(checklist).toContain("VITE_MOMO_SYNC_BASE_URL=https://api.example.test/momo");
     expect(checklist).toContain("VITE_MOMO_SYNC_TOKEN=local-dev-token");
-    expect(checklist).toContain("no real network");
-    expect(checklist).toContain("does not call `createRemoteSyncRunner()`");
-    expect(checklist).toContain("does not start background sync");
+    expect(checklist).toContain("不会尝试真实网络请求");
+    expect(checklist).toContain("不会调用 `createRemoteSyncRunner()`");
+    expect(checklist).toContain("不要启动后台同步");
   });
 });

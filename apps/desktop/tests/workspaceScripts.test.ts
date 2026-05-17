@@ -3,8 +3,8 @@ import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
-describe("workspace verification scripts", () => {
-  it("exposes a root verify command that runs all local checks", () => {
+describe("工作区验证脚本", () => {
+  it("提供运行所有本地检查的根 verify 命令", () => {
     const packageJsonPath = resolve(
       dirname(fileURLToPath(import.meta.url)),
       "../../../package.json",

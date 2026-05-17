@@ -178,60 +178,65 @@ function isSyncRunnerRunOnceResult(
 function disabledRemoteSyncConfig(): RemoteSyncConfig {
   return {
     enabled: false,
-    reason: "Remote sync base URL is not configured",
+    reason: "未配置远程同步 base URL",
   };
+}
+
+function displayError(value: string) {
+  const message = value.replace(/^Error:\s*/, "");
+  return `错误：${message}`;
 }
 </script>
 
 <template>
   <section class="page">
     <header class="page__head">
-      <h1>Settings</h1>
+      <h1>设置</h1>
       <span class="page__sub">偏好 · 同步 · 模型路由 · 安全</span>
     </header>
     <div class="card">
-      <h2>Build</h2>
+      <h2>构建</h2>
       <ul class="kv">
-        <li><span>Stage</span><b>Foundation / MVP-bootstrap</b></li>
-        <li><span>Frontend</span><b>Tauri 2 + Vue 3 + TypeScript</b></li>
-        <li><span>Backend</span><b>未接入（本地 MVP）</b></li>
+        <li><span>阶段</span><b>Foundation / MVP-bootstrap</b></li>
+        <li><span>前端</span><b>Tauri 2 + Vue 3 + TypeScript</b></li>
+        <li><span>后端</span><b>未接入（本地 MVP）</b></li>
       </ul>
     </div>
 
     <div class="card">
       <div class="section-title">
-        <h2>Local database</h2>
+        <h2>本地数据库</h2>
         <Database :size="16" aria-hidden="true" />
       </div>
       <div v-if="error" class="state state--error">
-        <p>{{ error }}</p>
+        <p>{{ displayError(error) }}</p>
         <button type="button" @click="load">
           <RefreshCw :size="16" aria-hidden="true" />
-          Retry
+          重试
         </button>
       </div>
       <div v-if="loading && !error" class="state state--inline">
         <Loader2 class="spin" :size="18" aria-hidden="true" />
-        <p>Loading database status...</p>
+        <p>正在加载数据库状态...</p>
       </div>
       <ul v-if="stats && !loading && !error" class="kv">
-        <li><span>Path</span><b>{{ stats.databasePath }}</b></li>
-        <li><span>Total tasks</span><b>{{ stats.totalTasks }}</b></li>
-        <li><span>Active</span><b>{{ stats.activeTasks }}</b></li>
-        <li><span>Completed</span><b>{{ stats.completedTasks }}</b></li>
-        <li><span>Pending sync</span><b>{{ stats.pendingLocalChanges }}</b></li>
+        <li><span>路径</span><b>{{ stats.databasePath }}</b></li>
+        <li><span>任务总数</span><b>{{ stats.totalTasks }}</b></li>
+        <li><span>进行中</span><b>{{ stats.activeTasks }}</b></li>
+        <li><span>已完成</span><b>{{ stats.completedTasks }}</b></li>
+        <li><span>待同步</span><b>{{ stats.pendingLocalChanges }}</b></li>
       </ul>
     </div>
 
     <div v-if="syncState && !loading && !error" class="card">
       <div class="section-title">
-        <h2>Sync state</h2>
+        <h2>同步状态</h2>
       </div>
       <ul class="kv">
-        <li><span>Server cursor</span><b>{{ syncState.serverCursor ?? "none" }}</b></li>
-        <li><span>Last synced</span><b>{{ syncState.lastSyncedAt ?? "Never synced" }}</b></li>
-        <li><span>Last error</span><b>{{ syncState.lastError ?? "None" }}</b></li>
-        <li><span>Updated</span><b>{{ syncState.updatedAt ?? "Not recorded" }}</b></li>
+        <li><span>服务端游标</span><b>{{ syncState.serverCursor ?? "无" }}</b></li>
+        <li><span>最近同步</span><b>{{ syncState.lastSyncedAt ?? "从未同步" }}</b></li>
+        <li><span>最近错误</span><b>{{ syncState.lastError ?? "无" }}</b></li>
+        <li><span>更新时间</span><b>{{ syncState.updatedAt ?? "未记录" }}</b></li>
       </ul>
     </div>
 
@@ -240,14 +245,14 @@ function disabledRemoteSyncConfig(): RemoteSyncConfig {
       class="card"
     >
       <div class="section-title">
-        <h2>Pending changes</h2>
+        <h2>待同步变更</h2>
         <span class="pill">{{ pendingChanges.length }}</span>
       </div>
       <div v-if="pendingChangesError" class="state state--error">
-        <p>{{ pendingChangesError }}</p>
+        <p>{{ displayError(pendingChangesError) }}</p>
         <button type="button" :disabled="pendingChangesLoading" @click="loadPendingChanges">
           <RefreshCw :size="16" aria-hidden="true" />
-          Retry pending changes
+          重试待同步变更
         </button>
       </div>
       <ul class="conflict-list">
@@ -258,21 +263,21 @@ function disabledRemoteSyncConfig(): RemoteSyncConfig {
           </div>
           <p>{{ change.entityLabel }}</p>
           <p>{{ change.payloadSummary }}</p>
-          <p class="muted">Created {{ change.createdAt }}</p>
+          <p class="muted">创建于 {{ change.createdAt }}</p>
         </li>
       </ul>
     </div>
 
     <div v-if="(syncRuns.length > 0 || syncRunsError) && !loading && !error" class="card">
       <div class="section-title">
-        <h2>Sync history</h2>
+        <h2>同步历史</h2>
         <span class="pill">{{ syncRuns.length }}</span>
       </div>
       <div v-if="syncRunsError" class="state state--error">
-        <p>{{ syncRunsError }}</p>
+        <p>{{ displayError(syncRunsError) }}</p>
         <button type="button" :disabled="syncRunsLoading" @click="loadSyncRuns">
           <RefreshCw :size="16" aria-hidden="true" />
-          Retry sync history
+          重试同步历史
         </button>
       </div>
       <ul class="conflict-list">
@@ -281,43 +286,43 @@ function disabledRemoteSyncConfig(): RemoteSyncConfig {
             <strong>{{ run.message }}</strong>
             <span class="pill">{{ run.status }}</span>
           </div>
-          <p>Cursor: <span>{{ run.serverCursor ?? "none" }}</span></p>
-          <p class="muted">Started {{ run.startedAt }} · Finished {{ run.finishedAt }}</p>
+          <p>游标：<span>{{ run.serverCursor ?? "无" }}</span></p>
+          <p class="muted">开始 {{ run.startedAt }} · 完成 {{ run.finishedAt }}</p>
         </li>
       </ul>
     </div>
 
     <div class="card">
       <div class="section-title">
-        <h2>Remote sync config</h2>
-        <span class="pill">{{ remoteSyncEnabled ? "enabled" : "disabled" }}</span>
+        <h2>远程同步配置</h2>
+        <span class="pill">{{ remoteSyncEnabled ? "已启用" : "已禁用" }}</span>
       </div>
       <ul class="kv">
         <template v-if="remoteSyncEnabled">
           <li><span>Base URL</span><b>{{ remoteSyncBaseUrl }}</b></li>
-          <li><span>Auth token</span><b>Configured</b></li>
+          <li><span>认证 token</span><b>已配置</b></li>
         </template>
-        <li v-else><span>Reason</span><b>{{ remoteSyncReason }}</b></li>
-        <li><span>Sync action</span><b>Local simulation</b></li>
+        <li v-else><span>原因</span><b>{{ remoteSyncReason }}</b></li>
+        <li><span>同步动作</span><b>本地模拟</b></li>
       </ul>
     </div>
 
     <div v-if="runLocalSyncSimulation" class="card">
       <div class="section-title">
-        <h2>Local sync simulation</h2>
+        <h2>本地同步模拟</h2>
       </div>
       <button type="button" :disabled="simulationLoading" @click="runSimulation">
         <Loader2 v-if="simulationLoading" class="spin" :size="16" aria-hidden="true" />
-        Run local sync simulation
+        运行本地同步模拟
       </button>
       <p v-if="simulationError" class="err">
-        Error: {{ simulationError.replace(/^Error:\s*/, "") }}
+        {{ displayError(simulationError) }}
       </p>
     </div>
 
     <div v-if="visibleConflicts.length > 0" class="card">
       <div class="section-title">
-        <h2>Sync conflicts</h2>
+        <h2>同步冲突</h2>
         <span class="pill">{{ visibleConflicts.length }}</span>
       </div>
       <ul class="conflict-list">
@@ -334,7 +339,7 @@ function disabledRemoteSyncConfig(): RemoteSyncConfig {
               <span class="pill">{{ conflict.localChange.action }}</span>
             </div>
             <p>{{ conflict.localChange.entityLabel }}</p>
-            <p>Local change created {{ conflict.localChange.createdAt }}</p>
+            <p>本地变更创建于 {{ conflict.localChange.createdAt }}</p>
           </template>
         </li>
       </ul>
@@ -342,21 +347,21 @@ function disabledRemoteSyncConfig(): RemoteSyncConfig {
 
     <div v-if="visibleSyncSummary" class="card">
       <div class="section-title">
-        <h2>Sync status</h2>
+        <h2>同步状态</h2>
         <span class="pill">{{ visibleSyncSummary.status }}</span>
       </div>
       <p class="empty-text">{{ visibleSyncSummary.message }}</p>
       <ul class="kv">
-        <li><span>Accepted</span><b>{{ visibleSyncSummary.acceptedCount }}</b></li>
-        <li><span>Rejected</span><b>{{ visibleSyncSummary.rejectedCount }}</b></li>
-        <li><span>Conflicts</span><b>{{ visibleSyncSummary.conflictCount }}</b></li>
-        <li><span>Cursor</span><b>{{ visibleSyncSummary.serverCursor }}</b></li>
+        <li><span>已接受</span><b>{{ visibleSyncSummary.acceptedCount }}</b></li>
+        <li><span>已拒绝</span><b>{{ visibleSyncSummary.rejectedCount }}</b></li>
+        <li><span>冲突</span><b>{{ visibleSyncSummary.conflictCount }}</b></li>
+        <li><span>游标</span><b>{{ visibleSyncSummary.serverCursor }}</b></li>
       </ul>
     </div>
 
     <div v-if="visibleRejections.length > 0" class="card">
       <div class="section-title">
-        <h2>Sync rejections</h2>
+        <h2>同步拒绝</h2>
         <span class="pill">{{ visibleRejections.length }}</span>
       </div>
       <ul class="conflict-list">
@@ -378,12 +383,12 @@ function disabledRemoteSyncConfig(): RemoteSyncConfig {
 
     <div v-if="visiblePullSummary" class="card">
       <div class="section-title">
-        <h2>Pull applied</h2>
+        <h2>已应用拉取结果</h2>
       </div>
       <ul class="kv">
-        <li><span>Applied tasks</span><b>{{ visiblePullSummary.appliedTaskCount }}</b></li>
-        <li><span>Deleted tasks</span><b>{{ visiblePullSummary.deletedTaskCount }}</b></li>
-        <li><span>Pull cursor</span><b>{{ visiblePullSummary.serverCursor }}</b></li>
+        <li><span>已应用任务</span><b>{{ visiblePullSummary.appliedTaskCount }}</b></li>
+        <li><span>已删除任务</span><b>{{ visiblePullSummary.deletedTaskCount }}</b></li>
+        <li><span>拉取游标</span><b>{{ visiblePullSummary.serverCursor }}</b></li>
       </ul>
     </div>
   </section>

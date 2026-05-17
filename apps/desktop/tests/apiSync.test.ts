@@ -21,8 +21,8 @@ import {
   createSyncEventApi,
 } from "../../../apps/api/src";
 
-describe("API sync service skeleton", () => {
-  it("accepts local task changes and exposes them through delta pull", async () => {
+describe("API 同步服务骨架", () => {
+  it("接受本地任务变更并通过 delta pull 暴露", async () => {
     const api = createSyncApi({
       store: createInMemorySyncStore(),
       now: () => new Date("2026-05-16T12:00:00.000Z"),
@@ -101,7 +101,7 @@ describe("API sync service skeleton", () => {
     });
   });
 
-  it("rejects unsupported contract versions without mutating the store", async () => {
+  it("拒绝不支持的契约版本且不修改存储", async () => {
     const api = createSyncApi({
       store: createInMemorySyncStore(),
       now: () => new Date("2026-05-16T12:00:00.000Z"),
@@ -115,7 +115,7 @@ describe("API sync service skeleton", () => {
         changes: [],
         clientSentAt: "2026-05-16T10:32:00.000Z",
       }),
-    ).rejects.toThrow("Unsupported sync contract version");
+    ).rejects.toThrow("不支持的同步契约版本");
 
     await expect(
       api.deltaPull(
@@ -132,7 +132,7 @@ describe("API sync service skeleton", () => {
     });
   });
 
-  it("applies update, status, and delete changes with incremental cursors", async () => {
+  it("以递增 cursor 应用 update、status 和 delete 变更", async () => {
     const api = createSyncApi({
       store: createInMemorySyncStore(),
       now: () => new Date("2026-05-16T12:00:00.000Z"),
@@ -238,7 +238,7 @@ describe("API sync service skeleton", () => {
     });
   });
 
-  it("treats replayed local change ids as idempotent", async () => {
+  it("将重复播放的本地 change id 视为幂等", async () => {
     const api = createSyncApi({
       store: createInMemorySyncStore(),
       now: () => new Date("2026-05-16T12:00:00.000Z"),
@@ -272,7 +272,7 @@ describe("API sync service skeleton", () => {
     });
   });
 
-  it("reports rejected changes without advancing the server cursor", async () => {
+  it("汇报被拒绝的变更且不推进 server cursor", async () => {
     const api = createSyncApi({
       store: createInMemorySyncStore(),
       now: () => new Date("2026-05-16T12:00:00.000Z"),
@@ -300,14 +300,14 @@ describe("API sync service skeleton", () => {
       rejectedChanges: [
         {
           id: "change-bad",
-          reason: "Task must exist before applying this change",
+          reason: "应用此变更前任务必须存在",
         },
       ],
       serverCursor: "cursor-0",
     });
   });
 
-  it("reports stale baseVersion updates as conflicts without advancing the cursor", async () => {
+  it("将过期 baseVersion 更新报告为冲突且不推进 cursor", async () => {
     const api = createSyncApi({
       store: createInMemorySyncStore(),
       now: () => new Date("2026-05-16T12:00:00.000Z"),
@@ -367,7 +367,7 @@ describe("API sync service skeleton", () => {
           workspaceId: "local",
           taskId: "task-1",
           changeId: "change-3",
-          reason: "Task version conflict",
+          reason: "任务版本冲突",
           clientPayload: {
             id: "task-1",
             baseVersion: 1,
@@ -386,7 +386,7 @@ describe("API sync service skeleton", () => {
     });
   });
 
-  it("resolves a stored conflict with the server_wins strategy", async () => {
+  it("使用 server_wins 策略解决已存储冲突", async () => {
     const api = createSyncApi({
       store: createInMemorySyncStore(),
       now: () => new Date("2026-05-16T12:00:00.000Z"),
@@ -462,7 +462,7 @@ describe("API sync service skeleton", () => {
     });
   });
 
-  it("resolves a stored conflict with the client_wins strategy", async () => {
+  it("使用 client_wins 策略解决已存储冲突", async () => {
     const api = createSyncApi({
       store: createInMemorySyncStore(),
       now: () => new Date("2026-05-16T12:00:00.000Z"),
@@ -537,7 +537,7 @@ describe("API sync service skeleton", () => {
     });
   });
 
-  it("keeps manual conflict resolution pending without applying the client change", async () => {
+  it("保持人工冲突解决待处理且不应用 client 变更", async () => {
     const api = createSyncApi({
       store: createInMemorySyncStore(),
       now: () => new Date("2026-05-16T12:00:00.000Z"),
@@ -645,7 +645,7 @@ describe("API sync service skeleton", () => {
     });
   });
 
-  it("lists only unresolved conflicts for a workspace", async () => {
+  it("仅列出 workspace 的未解决冲突", async () => {
     const api = createSyncApi({
       store: createInMemorySyncStore(),
       now: () => new Date("2026-05-16T12:00:00.000Z"),
@@ -767,7 +767,7 @@ describe("API sync service skeleton", () => {
     });
   });
 
-  it("publishes realtime sync events and catches up by sequence", async () => {
+  it("发布实时同步事件并按 sequence 补拉", async () => {
     const eventApi = createSyncEventApi({
       store: createInMemorySyncEventStore(),
       now: () => new Date("2026-05-16T12:00:00.000Z"),
@@ -786,7 +786,7 @@ describe("API sync service skeleton", () => {
       taskId: "task-1",
       changeId: "change-2",
       conflictId: "conflict-change-2",
-      payload: { reason: "Task version conflict" },
+      payload: { reason: "任务版本冲突" },
     });
 
     expect(first).toMatchObject({
@@ -822,7 +822,7 @@ describe("API sync service skeleton", () => {
     });
   });
 
-  it("publishes realtime events for accepted task changes and raised conflicts", async () => {
+  it("为已接受任务变更和已触发冲突发布实时事件", async () => {
     const eventApi = createSyncEventApi({
       store: createInMemorySyncEventStore(),
       now: () => new Date("2026-05-16T12:00:00.000Z"),
@@ -920,14 +920,14 @@ describe("API sync service skeleton", () => {
           taskId: "task-1",
           changeId: "change-3",
           conflictId: "conflict-change-3",
-          payload: { reason: "Task version conflict" },
+          payload: { reason: "任务版本冲突" },
         },
       ],
       latestSequence: 3,
     });
   });
 
-  it("queues local notifications and lists them by status without delivering channels", async () => {
+  it("将本地通知入队并按 status 列出且不投递", async () => {
     const api = createNotificationApi({
       store: createInMemoryNotificationStore(),
       now: () => new Date("2026-05-16T12:00:00.000Z"),
@@ -936,13 +936,13 @@ describe("API sync service skeleton", () => {
     const notification = await api.enqueueNotification({
       workspaceId: "local",
       type: "conflict.raised",
-      title: "Sync conflict needs review",
-      body: "Task changed in two places",
+      title: "同步冲突需要处理",
+      body: "任务在两处发生变更",
       sourceEventId: "event-3",
       taskId: "task-1",
       changeId: "change-3",
       conflictId: "conflict-change-3",
-      payload: { reason: "Task version conflict" },
+      payload: { reason: "任务版本冲突" },
     });
 
     expect(notification).toMatchObject({
@@ -950,11 +950,11 @@ describe("API sync service skeleton", () => {
       workspaceId: "local",
       type: "conflict.raised",
       status: "queued",
-      title: "Sync conflict needs review",
-      body: "Task changed in two places",
+      title: "同步冲突需要处理",
+      body: "任务在两处发生变更",
       sourceEventId: "event-3",
       conflictId: "conflict-change-3",
-      payload: { reason: "Task version conflict" },
+      payload: { reason: "任务版本冲突" },
       createdAt: "2026-05-16T12:00:00.000Z",
       acknowledgedAt: null,
     });
@@ -962,10 +962,10 @@ describe("API sync service skeleton", () => {
     await api.enqueueNotification({
       workspaceId: "local",
       type: "sync.run.failed",
-      title: "Sync failed",
-      body: "Network unavailable",
+      title: "同步失败",
+      body: "网络不可用",
       sourceEventId: null,
-      payload: { message: "offline" },
+      payload: { message: "离线" },
     });
 
     await expect(
@@ -987,7 +987,7 @@ describe("API sync service skeleton", () => {
     });
   });
 
-  it("acknowledges queued notifications without deleting them or delivering messages", async () => {
+  it("确认队列中的通知但不删除也不投递消息", async () => {
     const api = createNotificationApi({
       store: createInMemoryNotificationStore(),
       now: () => new Date("2026-05-16T12:00:00.000Z"),
@@ -996,7 +996,7 @@ describe("API sync service skeleton", () => {
     await api.enqueueNotification({
       workspaceId: "local",
       type: "approval.required",
-      title: "Manual approval required",
+      title: "需要人工批准",
       body: null,
       sourceEventId: null,
       payload: { runId: "run-1" },
@@ -1054,7 +1054,7 @@ describe("API sync service skeleton", () => {
     });
   });
 
-  it("projects sync events into local notification queue inputs without delivery", () => {
+  it("将同步事件投影为本地通知队列输入且不投递", () => {
     expect(
       projectSyncEventToNotification({
         id: "event-3",
@@ -1064,14 +1064,14 @@ describe("API sync service skeleton", () => {
         taskId: "task-1",
         changeId: "change-3",
         conflictId: "conflict-change-3",
-        payload: { reason: "Task version conflict" },
+        payload: { reason: "任务版本冲突" },
         createdAt: "2026-05-16T12:00:00.000Z",
       }),
     ).toEqual({
       workspaceId: "local",
       type: "conflict.raised",
-      title: "Sync conflict needs review",
-      body: "Task version conflict",
+      title: "同步冲突需要处理",
+      body: "任务版本冲突",
       sourceEventId: "event-3",
       taskId: "task-1",
       changeId: "change-3",
@@ -1079,7 +1079,7 @@ describe("API sync service skeleton", () => {
       payload: {
         eventType: "conflict.raised",
         eventSequence: 3,
-        reason: "Task version conflict",
+        reason: "任务版本冲突",
       },
     });
 
@@ -1089,20 +1089,20 @@ describe("API sync service skeleton", () => {
         workspaceId: "local",
         sequence: 4,
         type: "sync.run.updated",
-        payload: { status: "failed", message: "Network unavailable" },
+        payload: { status: "failed", message: "网络不可用" },
         createdAt: "2026-05-16T12:01:00.000Z",
       }),
     ).toEqual({
       workspaceId: "local",
       type: "sync.run.failed",
-      title: "Sync failed",
-      body: "Network unavailable",
+      title: "同步失败",
+      body: "网络不可用",
       sourceEventId: "event-4",
       payload: {
         eventType: "sync.run.updated",
         eventSequence: 4,
         status: "failed",
-        message: "Network unavailable",
+        message: "网络不可用",
       },
     });
 
@@ -1120,7 +1120,7 @@ describe("API sync service skeleton", () => {
     ).toBeNull();
   });
 
-  it("enqueues projected notifications from sync events through the local queue API", async () => {
+  it("通过本地队列 API 入队投影后的通知", async () => {
     const api = createNotificationApi({
       store: createInMemoryNotificationStore(),
       now: () => new Date("2026-05-16T12:00:00.000Z"),
@@ -1147,7 +1147,7 @@ describe("API sync service skeleton", () => {
           taskId: "task-1",
           changeId: "change-2",
           conflictId: "conflict-change-2",
-          payload: { reason: "Task version conflict" },
+          payload: { reason: "任务版本冲突" },
           createdAt: "2026-05-16T12:00:00.000Z",
         },
       ],

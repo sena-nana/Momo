@@ -43,8 +43,8 @@ import { createLocalSyncRunner } from "../src/sync/localSyncRunner";
 import { createRemoteSyncRunner } from "../src/sync/remoteSyncRunner";
 import { createRemoteSyncConfig } from "../src/sync/remoteSyncConfig";
 
-describe("desktop sync client adapter", () => {
-  it("exports the stable sync run status list", () => {
+describe("桌面端同步客户端适配器", () => {
+  it("导出稳定的同步运行状态列表", () => {
     expect(SYNC_RUN_STATUSES).toEqual([
       "all-synced",
       "has-rejections",
@@ -52,7 +52,7 @@ describe("desktop sync client adapter", () => {
     ]);
   });
 
-  it("builds a delta push request from pending local changes", async () => {
+  it("从待同步本地变更构造 delta push 请求", async () => {
     const repository = {
       listPendingChanges: vi.fn().mockResolvedValue([
         {
@@ -92,7 +92,7 @@ describe("desktop sync client adapter", () => {
     });
   });
 
-  it("builds an empty delta push request when there is nothing pending", async () => {
+  it("在没有待处理变更时构造空 delta push 请求", async () => {
     const repository = {
       listPendingChanges: vi.fn().mockResolvedValue([]),
     } as unknown as TaskRepository;
@@ -108,7 +108,7 @@ describe("desktop sync client adapter", () => {
     expect(repository.listPendingChanges).toHaveBeenCalledTimes(1);
   });
 
-  it("summarizes pending local changes for read-only settings display", () => {
+  it("为设置页只读展示汇总待同步本地变更", () => {
     expect(
       summarizePendingLocalChanges(
         [
@@ -149,7 +149,7 @@ describe("desktop sync client adapter", () => {
     ]);
   });
 
-  it("links rejected sync changes to pending local change summaries", () => {
+  it("将被拒绝同步变更关联到待同步本地变更摘要", () => {
     const pendingSummaries = summarizePendingLocalChanges([
       {
         id: "change-2",
@@ -195,7 +195,7 @@ describe("desktop sync client adapter", () => {
     ]);
   });
 
-  it("summarizes realtime sync events for read-only display", () => {
+  it("为只读展示汇总实时同步事件", () => {
     const events: SyncEventDto[] = [
       {
         id: "event-1",
@@ -215,7 +215,7 @@ describe("desktop sync client adapter", () => {
         taskId: "task-1",
         changeId: "change-2",
         conflictId: "conflict-change-2",
-        payload: { reason: "Task version conflict" },
+        payload: { reason: "任务版本冲突" },
         createdAt: "2026-05-16T12:01:00.000Z",
       },
       {
@@ -247,7 +247,7 @@ describe("desktop sync client adapter", () => {
         taskId: "task-1",
         changeId: "change-2",
         conflictId: "conflict-change-2",
-        payloadSummary: 'reason: "Task version conflict"',
+        payloadSummary: 'reason: "任务版本冲突"',
       },
       {
         id: "event-3",
@@ -262,7 +262,7 @@ describe("desktop sync client adapter", () => {
     ]);
   });
 
-  it("fetches realtime event catch-up summaries without running sync", async () => {
+  it("不运行同步也能获取实时事件补拉摘要", async () => {
     const transport = {
       deltaPush: vi.fn(),
       listConflicts: vi.fn(),
@@ -321,7 +321,7 @@ describe("desktop sync client adapter", () => {
     expect(transport.listConflicts).not.toHaveBeenCalled();
   });
 
-  it("returns a disabled realtime catch-up result when transport does not expose events", async () => {
+  it("当 transport 不暴露事件时返回禁用的实时补拉结果", async () => {
     await expect(
       fetchRealtimeEventCatchUp({
         transport: {
@@ -335,13 +335,13 @@ describe("desktop sync client adapter", () => {
       }),
     ).resolves.toEqual({
       enabled: false,
-      reason: "Realtime event catch-up is not available",
+      reason: "实时事件补拉不可用",
       latestSequence: 0,
       events: [],
     });
   });
 
-  it("runs a local sync simulation with the in-memory sync API", async () => {
+  it("使用内存同步 API 运行本地同步模拟", async () => {
     const repository = {
       listPendingChanges: vi.fn().mockResolvedValue([
         {
@@ -391,7 +391,7 @@ describe("desktop sync client adapter", () => {
         acceptedChangeIds: ["change-1"],
         summary: {
           status: "all-synced",
-          message: "1 local change synced",
+          message: "已同步 1 个本地变更",
           serverCursor: "cursor-1",
         },
       },
@@ -403,7 +403,7 @@ describe("desktop sync client adapter", () => {
     );
   });
 
-  it("adapts sync runner transport calls to HTTP-like API router routes", async () => {
+  it("将同步 runner transport 调用适配到 HTTP-like API router 路由", async () => {
     const eventApi = createSyncEventApi({
       store: createInMemorySyncEventStore(),
       now: () => new Date("2026-05-16T12:00:00.000Z"),
@@ -489,7 +489,7 @@ describe("desktop sync client adapter", () => {
     });
   });
 
-  it("adapts sync runner transport calls to injected HTTP fetch requests", async () => {
+  it("将同步 runner transport 调用适配到注入的 HTTP fetch 请求", async () => {
     const fetch = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
@@ -529,7 +529,7 @@ describe("desktop sync client adapter", () => {
     );
   });
 
-  it("adapts realtime event catch-up calls through the injected HTTP transport", async () => {
+  it("通过注入的 HTTP transport 适配实时事件补拉调用", async () => {
     const fetch = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
@@ -584,7 +584,7 @@ describe("desktop sync client adapter", () => {
     );
   });
 
-  it("adds configured HTTP sync transport headers to every request", async () => {
+  it("为每个请求添加已配置的 HTTP 同步 transport headers", async () => {
     const fetch = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
@@ -622,7 +622,7 @@ describe("desktop sync client adapter", () => {
     );
   });
 
-  it("rejects missing HTTP sync transport base URLs before calling fetch", async () => {
+  it("在调用 fetch 前拒绝缺失 HTTP 同步 transport base URL", async () => {
     const fetch = vi.fn();
     const transport = createHttpSyncTransport({
       baseUrl: "   ",
@@ -636,18 +636,18 @@ describe("desktop sync client adapter", () => {
         deviceId: "desktop-1",
         sinceCursor: null,
       }),
-    ).rejects.toThrow("HTTP sync baseUrl is not configured");
+    ).rejects.toThrow("未配置 HTTP 同步 baseUrl");
     expect(fetch).not.toHaveBeenCalled();
   });
 
-  it("builds disabled remote sync config when no base URL is configured", () => {
+  it("未配置 base URL 时构造禁用的远程同步配置", () => {
     expect(createRemoteSyncConfig({})).toEqual({
       enabled: false,
-      reason: "Remote sync base URL is not configured",
+      reason: "未配置远程同步 base URL",
     });
   });
 
-  it("builds remote sync config with an authorization headers provider", async () => {
+  it("构造带授权 headers provider 的远程同步配置", async () => {
     const config = createRemoteSyncConfig({
       VITE_MOMO_SYNC_BASE_URL: " https://api.example.test/momo ",
       VITE_MOMO_SYNC_TOKEN: " local-token ",
@@ -663,7 +663,7 @@ describe("desktop sync client adapter", () => {
     });
   });
 
-  it("short-circuits remote sync runner creation when remote sync is disabled", () => {
+  it("在远程同步禁用时短路远程同步 runner 创建", () => {
     const fetch = vi.fn();
     const repository = {
       listPendingChanges: vi.fn(),
@@ -678,7 +678,7 @@ describe("desktop sync client adapter", () => {
       createRemoteSyncRunner({
         remoteSyncConfig: {
           enabled: false,
-          reason: "Remote sync base URL is not configured",
+          reason: "未配置远程同步 base URL",
         },
         repository,
         workspaceId: "local",
@@ -688,13 +688,13 @@ describe("desktop sync client adapter", () => {
       }),
     ).toEqual({
       kind: "disabled",
-      reason: "Remote sync base URL is not configured",
+      reason: "未配置远程同步 base URL",
       runner: null,
     });
     expect(fetch).not.toHaveBeenCalled();
   });
 
-  it("creates a remote sync runner from enabled remote config and wires HTTP transport", async () => {
+  it("从启用的远程配置创建远程同步 runner 并连接 HTTP transport", async () => {
     const repository = {
       listPendingChanges: vi.fn().mockResolvedValue([]),
       markChangeSynced: vi.fn().mockResolvedValue(undefined),
@@ -837,7 +837,7 @@ describe("desktop sync client adapter", () => {
     });
   });
 
-  it("surfaces injected HTTP fetch transport errors with method path and status", async () => {
+  it("将注入的 HTTP fetch transport 错误暴露为 method、path 和 status", async () => {
     const fetch = vi.fn().mockResolvedValue({
       ok: false,
       status: 503,
@@ -860,11 +860,11 @@ describe("desktop sync client adapter", () => {
     );
   });
 
-  it("surfaces HTTP-like sync transport route errors as thrown errors", async () => {
+  it("将 HTTP-like 同步 transport 路由错误暴露为抛出错误", async () => {
     const router = {
       handle: vi.fn().mockResolvedValue({
         status: 400,
-        body: { error: "Unsupported sync contract version" },
+        body: { error: "不支持的同步契约版本" },
       }),
     };
     const transport = createHttpLikeSyncTransport({ router });
@@ -877,7 +877,7 @@ describe("desktop sync client adapter", () => {
         sinceCursor: null,
       }),
     ).rejects.toThrow(
-      "POST /sync/delta/pull failed with 400: Unsupported sync contract version",
+      "POST /sync/delta/pull failed with 400: 不支持的同步契约版本",
     );
     expect(router.handle).toHaveBeenCalledWith({
       method: "POST",
@@ -891,11 +891,11 @@ describe("desktop sync client adapter", () => {
     });
   });
 
-  it("surfaces HTTP-like realtime event catch-up errors as thrown errors", async () => {
+  it("将 HTTP-like 实时事件补拉错误暴露为抛出错误", async () => {
     const router = {
       handle: vi.fn().mockResolvedValue({
         status: 404,
-        body: { error: "Sync event API not configured" },
+        body: { error: "未配置同步事件 API" },
       }),
     };
     const transport = createHttpLikeSyncTransport({ router });
@@ -907,7 +907,7 @@ describe("desktop sync client adapter", () => {
     });
 
     await expect(transport.listEvents?.(request)).rejects.toThrow(
-      "GET /sync/events failed with 404: Sync event API not configured",
+      "GET /sync/events failed with 404: 未配置同步事件 API",
     );
     expect(router.handle).toHaveBeenCalledWith({
       method: "GET",
@@ -916,7 +916,7 @@ describe("desktop sync client adapter", () => {
     });
   });
 
-  it("creates the default local sync runner through the HTTP-like API router boundary", async () => {
+  it("通过 HTTP-like API router 边界创建默认本地同步 runner", async () => {
     const repository = {
       listPendingChanges: vi.fn().mockResolvedValue([]),
       markChangeSynced: vi.fn().mockResolvedValue(undefined),
@@ -1009,7 +1009,7 @@ describe("desktop sync client adapter", () => {
     createApiRouterSpy.mockRestore();
   });
 
-  it("returns conflict summaries from a local sync simulation without marking the conflicting change synced", async () => {
+  it("从本地同步模拟返回冲突摘要且不把冲突变更标为 synced", async () => {
     const repository = {
       listPendingChanges: vi.fn().mockResolvedValue([
         {
@@ -1107,7 +1107,7 @@ describe("desktop sync client adapter", () => {
     expect(repository.markChangeSynced).not.toHaveBeenCalled();
   });
 
-  it("runs sync through an explicit desktop sync runner boundary", async () => {
+  it("通过显式桌面同步 runner 边界运行同步", async () => {
     const repository = {
       listPendingChanges: vi.fn().mockResolvedValue([
         {
@@ -1140,7 +1140,7 @@ describe("desktop sync client adapter", () => {
         status: "succeeded",
         startedAt: "2026-05-16T12:01:00.000Z",
         finishedAt: "2026-05-16T12:01:01.000Z",
-        message: "1 local change synced",
+        message: "已同步 1 个本地变更",
         serverCursor: "cursor-8",
       }),
     } as unknown as TaskRepository;
@@ -1205,7 +1205,7 @@ describe("desktop sync client adapter", () => {
           acceptedChangeIds: ["change-1"],
           summary: {
             status: "all-synced",
-            message: "1 local change synced",
+            message: "已同步 1 个本地变更",
             serverCursor: "cursor-7",
           },
         },
@@ -1231,7 +1231,7 @@ describe("desktop sync client adapter", () => {
       status: "succeeded",
       startedAt: "2026-05-16T12:01:00.000Z",
       finishedAt: "2026-05-16T12:01:00.000Z",
-      message: "1 local change synced",
+      message: "已同步 1 个本地变更",
       serverCursor: "cursor-8",
     });
     expect(transport.deltaPull).toHaveBeenCalledWith({
@@ -1249,7 +1249,7 @@ describe("desktop sync client adapter", () => {
     expect(transport.listConflicts).toHaveBeenCalledTimes(1);
   });
 
-  it("returns sync runner transport errors instead of throwing them into pages", async () => {
+  it("返回同步 runner transport 错误而不是抛进页面", async () => {
     const repository = {
       listPendingChanges: vi.fn().mockResolvedValue([]),
       markChangeSynced: vi.fn().mockResolvedValue(undefined),
@@ -1301,7 +1301,7 @@ describe("desktop sync client adapter", () => {
     expect(transport.listConflicts).not.toHaveBeenCalled();
   });
 
-  it("keeps route and status transport errors visible when saving sync state fails", async () => {
+  it("保存同步状态失败时仍保留 route/status transport 错误可见", async () => {
     const repository = {
       listPendingChanges: vi.fn().mockResolvedValue([]),
       markChangeSynced: vi.fn().mockResolvedValue(undefined),
@@ -1311,7 +1311,7 @@ describe("desktop sync client adapter", () => {
       router: {
         handle: vi.fn().mockResolvedValue({
           status: 400,
-          body: { error: "Unsupported sync contract version" },
+          body: { error: "不支持的同步契约版本" },
         }),
       },
     });
@@ -1325,17 +1325,17 @@ describe("desktop sync client adapter", () => {
 
     await expect(runner.runOnce()).resolves.toEqual({
       ok: false,
-      error: "POST /sync/delta/push failed with 400: Unsupported sync contract version",
+      error: "POST /sync/delta/push failed with 400: 不支持的同步契约版本",
       result: null,
     });
     expect(repository.saveSyncState).toHaveBeenCalledWith({
       serverCursor: null,
       lastSyncedAt: null,
-      lastError: "POST /sync/delta/push failed with 400: Unsupported sync contract version",
+      lastError: "POST /sync/delta/push failed with 400: 不支持的同步契约版本",
     });
   });
 
-  it("applies delta pull responses into local task storage and saves the cursor", async () => {
+  it("将 delta pull 响应应用到本地任务存储并保存 cursor", async () => {
     const repository = {
       applyRemoteTask: vi.fn().mockResolvedValue(undefined),
       deleteRemoteTask: vi.fn().mockResolvedValue(undefined),
@@ -1405,7 +1405,7 @@ describe("desktop sync client adapter", () => {
     });
   });
 
-  it("marks accepted changes as synced and returns unresolved sync results", async () => {
+  it("将已接受变更标记为 synced 并返回未解决同步结果", async () => {
     const repository = {
       markChangeSynced: vi.fn().mockResolvedValue(undefined),
     } as unknown as TaskRepository;
@@ -1419,7 +1419,7 @@ describe("desktop sync client adapter", () => {
           workspaceId: "local",
           taskId: "task-1",
           changeId: "change-4",
-          reason: "Task version conflict",
+          reason: "任务版本冲突",
           clientPayload: { title: "Local" },
           serverTask: null,
           createdAt: "2026-05-16T12:00:00.000Z",
@@ -1442,7 +1442,7 @@ describe("desktop sync client adapter", () => {
       serverCursor: "cursor-2",
       summary: {
         status: "has-conflicts",
-        message: "1 sync conflict needs review",
+        message: "1 个同步冲突需要处理",
         acceptedCount: 2,
         rejectedCount: 1,
         conflictCount: 1,
@@ -1462,7 +1462,7 @@ describe("desktop sync client adapter", () => {
     );
   });
 
-  it("exposes the apply delta push result shape for callers", async () => {
+  it("向调用方暴露 apply delta push 结果结构", async () => {
     const repository = {
       markChangeSynced: vi.fn().mockResolvedValue(undefined),
     } as unknown as TaskRepository;
@@ -1488,7 +1488,7 @@ describe("desktop sync client adapter", () => {
       serverCursor: "cursor-9",
       summary: {
         status: "all-synced",
-        message: "Already synced",
+        message: "已完成同步",
         acceptedCount: 0,
         rejectedCount: 0,
         conflictCount: 0,
@@ -1498,7 +1498,7 @@ describe("desktop sync client adapter", () => {
     expect(repository.markChangeSynced).not.toHaveBeenCalled();
   });
 
-  it("summarizes a fully accepted sync run", () => {
+  it("汇总完全接受的同步运行", () => {
     expect(
       summarizeDeltaPushResponse({
         contractVersion: SYNC_CONTRACT_VERSION,
@@ -1510,7 +1510,7 @@ describe("desktop sync client adapter", () => {
       }),
     ).toEqual({
       status: "all-synced",
-      message: "1 local change synced",
+      message: "已同步 1 个本地变更",
       acceptedCount: 1,
       rejectedCount: 0,
       conflictCount: 0,
@@ -1518,7 +1518,7 @@ describe("desktop sync client adapter", () => {
     });
   });
 
-  it("summarizes an empty sync run as already synced", () => {
+  it("将空同步运行汇总为已完成同步", () => {
     expect(
       summarizeDeltaPushResponse({
         contractVersion: SYNC_CONTRACT_VERSION,
@@ -1530,7 +1530,7 @@ describe("desktop sync client adapter", () => {
       }),
     ).toEqual({
       status: "all-synced",
-      message: "Already synced",
+      message: "已完成同步",
       acceptedCount: 0,
       rejectedCount: 0,
       conflictCount: 0,
@@ -1538,7 +1538,7 @@ describe("desktop sync client adapter", () => {
     });
   });
 
-  it("summarizes rejected sync changes", () => {
+  it("汇总被拒绝的同步变更", () => {
     expect(
       summarizeDeltaPushResponse({
         contractVersion: SYNC_CONTRACT_VERSION,
@@ -1550,7 +1550,7 @@ describe("desktop sync client adapter", () => {
       }),
     ).toMatchObject({
       status: "has-rejections",
-      message: "1 local change needs retry or repair",
+      message: "1 个本地变更需要重试或修复",
       acceptedCount: 0,
       rejectedCount: 1,
       conflictCount: 0,
@@ -1558,7 +1558,7 @@ describe("desktop sync client adapter", () => {
     });
   });
 
-  it("summarizes sync conflicts before rejected changes", () => {
+  it("优先于被拒绝变更汇总同步冲突", () => {
     expect(
       summarizeDeltaPushResponse({
         contractVersion: SYNC_CONTRACT_VERSION,
@@ -1570,7 +1570,7 @@ describe("desktop sync client adapter", () => {
             workspaceId: "local",
             taskId: "task-1",
             changeId: "change-3",
-            reason: "Task version conflict",
+            reason: "任务版本冲突",
             clientPayload: { patch: { title: "Local" } },
             serverTask: null,
             createdAt: "2026-05-16T12:00:00.000Z",
@@ -1581,7 +1581,7 @@ describe("desktop sync client adapter", () => {
       }),
     ).toMatchObject({
       status: "has-conflicts",
-      message: "1 sync conflict needs review",
+      message: "1 个同步冲突需要处理",
       acceptedCount: 1,
       rejectedCount: 1,
       conflictCount: 1,
@@ -1589,14 +1589,14 @@ describe("desktop sync client adapter", () => {
     });
   });
 
-  it("summarizes pending conflicts without applying a resolution", () => {
+  it("汇总待处理冲突且不应用解决方案", () => {
     const conflicts: TaskConflictDto[] = [
       {
         id: "conflict-1",
         workspaceId: "local",
         taskId: "task-1",
         changeId: "change-4",
-        reason: "Task version conflict",
+        reason: "任务版本冲突",
         clientPayload: {
           id: "task-1",
           patch: { title: "Local title", priority: 3 },
@@ -1624,7 +1624,7 @@ describe("desktop sync client adapter", () => {
         workspaceId: "local",
         taskId: "task-2",
         changeId: "change-5",
-        reason: "Task version conflict",
+        reason: "任务版本冲突",
         clientPayload: { status: "completed" },
         serverTask: null,
         createdAt: "2026-05-16T12:02:00.000Z",
@@ -1636,7 +1636,7 @@ describe("desktop sync client adapter", () => {
         id: "conflict-1",
         taskId: "task-1",
         changeId: "change-4",
-        reason: "Task version conflict",
+        reason: "任务版本冲突",
         createdAt: "2026-05-16T12:01:00.000Z",
         serverTaskTitle: "Server title",
         serverTaskVersion: 5,
@@ -1646,7 +1646,7 @@ describe("desktop sync client adapter", () => {
         id: "conflict-2",
         taskId: "task-2",
         changeId: "change-5",
-        reason: "Task version conflict",
+        reason: "任务版本冲突",
         createdAt: "2026-05-16T12:02:00.000Z",
         serverTaskTitle: null,
         serverTaskVersion: null,
@@ -1655,14 +1655,14 @@ describe("desktop sync client adapter", () => {
     ]);
   });
 
-  it("links pending sync conflicts to pending local change summaries", () => {
+  it("将待处理同步冲突关联到待同步本地变更摘要", () => {
     const conflicts = summarizePendingConflicts([
       {
         id: "conflict-1",
         workspaceId: "local",
         taskId: "task-1",
         changeId: "change-4",
-        reason: "Task version conflict",
+        reason: "任务版本冲突",
         clientPayload: {
           id: "task-1",
           patch: { title: "Local title" },
@@ -1690,7 +1690,7 @@ describe("desktop sync client adapter", () => {
         workspaceId: "local",
         taskId: "task-2",
         changeId: "missing-change",
-        reason: "Task version conflict",
+        reason: "任务版本冲突",
         clientPayload: { status: "completed" },
         serverTask: null,
         createdAt: "2026-05-16T12:02:00.000Z",
@@ -1718,7 +1718,7 @@ describe("desktop sync client adapter", () => {
         id: "conflict-1",
         taskId: "task-1",
         changeId: "change-4",
-        reason: "Task version conflict",
+        reason: "任务版本冲突",
         createdAt: "2026-05-16T12:01:00.000Z",
         serverTaskTitle: "Server title",
         serverTaskVersion: 5,
@@ -1735,7 +1735,7 @@ describe("desktop sync client adapter", () => {
         id: "conflict-2",
         taskId: "task-2",
         changeId: "missing-change",
-        reason: "Task version conflict",
+        reason: "任务版本冲突",
         createdAt: "2026-05-16T12:02:00.000Z",
         serverTaskTitle: null,
         serverTaskVersion: null,

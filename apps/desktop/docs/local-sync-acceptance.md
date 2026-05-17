@@ -1,42 +1,42 @@
-# Local sync acceptance checklist
+# 本地同步验收清单
 
-## Scope
+## 范围
 
-This checklist verifies the desktop Settings local sync simulation only. It uses the default local runner, in-memory transport, and local SQLite repository. It makes no real network request, does not call `createRemoteSyncRunner()`, and does not start background sync.
+本清单只验证桌面端设置页的本地同步模拟。它使用默认本地 runner、内存 transport 和本地 SQLite repository；不会发起真实网络请求，不会调用 `createRemoteSyncRunner()`，也不会启动后台同步。
 
-## Vite smoke
+## Vite 冒烟
 
-- Run `npm run dev`.
-- Open `http://localhost:1420/settings`.
-- Confirm the page renders `Remote sync config`, `Sync action`, and `Local simulation`.
-- Confirm the `Local sync simulation` button is visible and keyboard-accessible.
-- Click `Local sync simulation`.
-- Confirm Vite smoke only verifies routing, the button, and error handling because a plain browser does not provide the Tauri SQL plugin.
+- 运行 `npm run dev`。
+- 打开 `http://localhost:1420/settings`。
+- 确认页面展示 `远程同步配置`、`同步动作` 和 `本地模拟`。
+- 确认 `本地同步模拟` 按钮可见，并可通过键盘操作。
+- 点击 `本地同步模拟`。
+- 确认 Vite 冒烟只验证路由、按钮和错误处理，因为普通浏览器不提供 Tauri SQL 插件。
 
-## Tauri WebView full SQLite flow
+## Tauri WebView 完整 SQLite 流程
 
-- Run `npm run tauri dev`.
-- Open Settings in the desktop WebView.
-- Create or edit a task so `Pending changes` is visible.
-- Click `Local sync simulation`.
-- Confirm `Sync status` appears and reports either `Already synced` or the local change result.
-- Confirm `Sync state` refreshes cursor, last synced, and last error.
-- Confirm `Sync history` records the manual run.
-- Confirm `Pull applied` appears when the runner returns a delta pull summary.
-- When using a fixture or test route that returns failures, confirm `Sync rejections` and `Sync conflicts` show matching pending change diagnostics without resolve, retry, delete, force, or mark-synced actions.
+- 运行 `npm run tauri dev`。
+- 在桌面 WebView 中打开设置页。
+- 创建或编辑一个任务，让 `待同步变更` 可见。
+- 点击 `本地同步模拟`。
+- 确认 `同步状态` 出现，并展示 `已完成同步` 或本地变更结果。
+- 确认 `同步状态` 刷新 cursor、最近同步时间和最近错误。
+- 确认 `同步历史` 记录本次手动运行。
+- 当同步 runner 返回 delta pull 摘要时，确认 `已应用拉取结果` 出现。
+- 使用会返回失败的测试夹具或测试路由时，确认 `同步拒绝` 与 `同步冲突` 展示匹配的待同步变更诊断，且不提供解决、重试、删除、强制或标记已同步操作。
 
-## Remote config display smoke
+## 远程配置展示冒烟
 
-- Start Vite with `VITE_MOMO_SYNC_BASE_URL=https://api.example.test/momo` and `VITE_MOMO_SYNC_TOKEN=local-dev-token`.
-- Open Settings and confirm `Remote sync config` shows enabled.
-- Confirm the token is not rendered; only configured status is shown.
-- Confirm `Sync action` remains `Local simulation`.
-- Confirm the default button still uses local simulation and no real network is attempted.
+- 使用 `VITE_MOMO_SYNC_BASE_URL=https://api.example.test/momo` 和 `VITE_MOMO_SYNC_TOKEN=local-dev-token` 启动 Vite。
+- 打开设置页并确认 `远程同步配置` 显示已启用。
+- 确认 token 不会渲染，只显示已配置状态。
+- 确认 `同步动作` 仍为 `本地模拟`。
+- 确认默认按钮仍使用本地模拟，并且不会尝试真实网络请求。
 
-## Regression guardrails
+## 回归护栏
 
-- Do not switch the default `/settings` route to remote sync.
-- Do not call `createRemoteSyncRunner()` from the default Settings runtime.
-- Do not start background sync.
-- Do not add automatic conflict resolution, rejected-change retry, local change deletion, or force mark-synced actions.
-- Keep sync diagnostics read-only: `Pending changes`, `Sync history`, `Sync rejections`, `Sync conflicts`, `Sync status`, `Sync state`, and `Pull applied`.
+- 不要把默认 `/settings` 路由切到远程同步。
+- 不要从默认设置页 runtime 调用 `createRemoteSyncRunner()`。
+- 不要启动后台同步。
+- 不要新增自动冲突解决、被拒绝变更重试、本地变更删除或强制标记已同步操作。
+- 同步诊断保持只读：`待同步变更`、`同步历史`、`同步拒绝`、`同步冲突`、`同步状态` 和 `已应用拉取结果`。

@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import { openWidgetWindow, WIDGET_WINDOW_OPTIONS } from "../src/window/widgetWindow";
 
-describe("widget window service", () => {
-  it("focuses an existing widget window", async () => {
+describe("小组件窗口服务", () => {
+  it("聚焦已存在的小组件窗口", async () => {
     const existing = {
       show: vi.fn().mockResolvedValue(undefined),
       setFocus: vi.fn().mockResolvedValue(undefined),
@@ -20,7 +20,7 @@ describe("widget window service", () => {
     expect(api.create).not.toHaveBeenCalled();
   });
 
-  it("creates the widget window with the compact route", async () => {
+  it("使用紧凑路由创建小组件窗口", async () => {
     const api = {
       getByLabel: vi.fn().mockResolvedValue(null),
       create: vi.fn().mockReturnValue({}),

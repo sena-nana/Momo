@@ -5,10 +5,10 @@ import { PanelTopOpen } from "lucide-vue-next";
 import { openWidgetWindow } from "../window/widgetWindow";
 
 const nav = [
-  { to: "/today", label: "Today" },
-  { to: "/inbox", label: "Inbox" },
-  { to: "/calendar", label: "Calendar" },
-  { to: "/settings", label: "Settings" },
+  { to: "/today", label: "今日" },
+  { to: "/inbox", label: "收件箱" },
+  { to: "/calendar", label: "日历" },
+  { to: "/settings", label: "设置" },
 ];
 
 const widgetError = ref<string | null>(null);
@@ -45,10 +45,10 @@ async function onOpenWidget() {
           @click="onOpenWidget"
         >
           <PanelTopOpen :size="16" aria-hidden="true" />
-          Open widget
+          打开小组件
         </button>
         <p v-if="widgetError" class="shell__error">{{ widgetError }}</p>
-        <RouterLink to="/login" class="shell__nav-item">Sign out</RouterLink>
+        <RouterLink to="/login" class="shell__nav-item">退出登录</RouterLink>
       </div>
     </aside>
     <main class="shell__main">
