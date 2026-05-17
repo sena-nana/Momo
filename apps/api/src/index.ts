@@ -57,6 +57,12 @@ export interface NotificationApi {
   ): Promise<AcknowledgeNotificationResponse>;
 }
 
+export interface EnqueueNotificationsFromSyncEventsResult {
+  enqueuedCount: number;
+  ignoredCount: number;
+  notifications: NotificationDto[];
+}
+
 export interface PublishSyncEventInput {
   workspaceId: string;
   type: SyncEventTypeDto;
@@ -356,6 +362,76 @@ export function createNotificationApi({
   };
 }
 
+export function projectSyncEventToNotification(
+  event: SyncEventDto,
+): EnqueueNotificationInput | null {
+  if (event.type === "conflict.raised") {
+    const reason = readStringPayloadField(event.payload, "reason");
+    return {
+      workspaceId: event.workspaceId,
+      type: "conflict.raised",
+      title: "Sync conflict needs review",
+      body: reason,
+      sourceEventId: event.id,
+      taskId: event.taskId,
+      changeId: event.changeId,
+      conflictId: event.conflictId,
+      payload: {
+        eventType: event.type,
+        eventSequence: event.sequence,
+        reason,
+      },
+    };
+  }
+
+  if (event.type === "sync.run.updated") {
+    const status = readStringPayloadField(event.payload, "status");
+    if (status !== "failed") return null;
+    const message = readStringPayloadField(event.payload, "message");
+    return {
+      workspaceId: event.workspaceId,
+      type: "sync.run.failed",
+      title: "Sync failed",
+      body: message,
+      sourceEventId: event.id,
+      payload: {
+        eventType: event.type,
+        eventSequence: event.sequence,
+        status,
+        message,
+      },
+    };
+  }
+
+  return null;
+}
+
+export async function enqueueNotificationsFromSyncEvents({
+  notificationApi,
+  events,
+}: {
+  notificationApi: NotificationApi;
+  events: SyncEventDto[];
+}): Promise<EnqueueNotificationsFromSyncEventsResult> {
+  const notifications: NotificationDto[] = [];
+  let ignoredCount = 0;
+
+  for (const event of events) {
+    const input = projectSyncEventToNotification(event);
+    if (!input) {
+      ignoredCount += 1;
+      continue;
+    }
+    notifications.push(await notificationApi.enqueueNotification(input));
+  }
+
+  return {
+    enqueuedCount: notifications.length,
+    ignoredCount,
+    notifications,
+  };
+}
+
 export function createInMemorySyncEventStore(): SyncEventStore {
   const workspaces = new Map<string, StoredEventWorkspace>();
 
@@ -624,6 +700,12 @@ function assertSupportedContract(contractVersion: number) {
   if (contractVersion !== SYNC_CONTRACT_VERSION) {
     throw new Error("Unsupported sync contract version");
   }
+}
+
+function readStringPayloadField(payload: unknown, field: string) {
+  if (!payload || typeof payload !== "object") return null;
+  const value = (payload as Record<string, unknown>)[field];
+  return typeof value === "string" && value.trim() ? value : null;
 }
 
 async function publishTaskChangedEvent(

@@ -133,6 +133,11 @@ describe("desktop README", () => {
     expect(readme).toContain("no email delivery");
     expect(readme).toContain("no in-app delivery channel");
     expect(readme).toContain("no background worker");
+    expect(readme).toContain("notification event projection boundary");
+    expect(readme).toContain("projectSyncEventToNotification()");
+    expect(readme).toContain("enqueueNotificationsFromSyncEvents()");
+    expect(readme).toContain("queue source boundary");
+    expect(readme).toContain("not notification delivery");
     expect(readme).toContain("BE-01 / IF-01 production backend prerequisites");
     expect(readme).toContain("keep the default Settings route on local simulation");
     expect(readme).not.toContain("下一步建议围绕 HTTP transport 增加认证 header / base URL 配置边界");

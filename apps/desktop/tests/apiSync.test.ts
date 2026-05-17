@@ -14,6 +14,8 @@ import {
   createInMemorySyncEventStore,
   createInMemoryNotificationStore,
   createNotificationApi,
+  enqueueNotificationsFromSyncEvents,
+  projectSyncEventToNotification,
   createInMemorySyncStore,
   createSyncApi,
   createSyncEventApi,
@@ -1047,6 +1049,139 @@ describe("API sync service skeleton", () => {
           id: "notification-1",
           status: "acknowledged",
           acknowledgedAt: "2026-05-16T12:00:00.000Z",
+        },
+      ],
+    });
+  });
+
+  it("projects sync events into local notification queue inputs without delivery", () => {
+    expect(
+      projectSyncEventToNotification({
+        id: "event-3",
+        workspaceId: "local",
+        sequence: 3,
+        type: "conflict.raised",
+        taskId: "task-1",
+        changeId: "change-3",
+        conflictId: "conflict-change-3",
+        payload: { reason: "Task version conflict" },
+        createdAt: "2026-05-16T12:00:00.000Z",
+      }),
+    ).toEqual({
+      workspaceId: "local",
+      type: "conflict.raised",
+      title: "Sync conflict needs review",
+      body: "Task version conflict",
+      sourceEventId: "event-3",
+      taskId: "task-1",
+      changeId: "change-3",
+      conflictId: "conflict-change-3",
+      payload: {
+        eventType: "conflict.raised",
+        eventSequence: 3,
+        reason: "Task version conflict",
+      },
+    });
+
+    expect(
+      projectSyncEventToNotification({
+        id: "event-4",
+        workspaceId: "local",
+        sequence: 4,
+        type: "sync.run.updated",
+        payload: { status: "failed", message: "Network unavailable" },
+        createdAt: "2026-05-16T12:01:00.000Z",
+      }),
+    ).toEqual({
+      workspaceId: "local",
+      type: "sync.run.failed",
+      title: "Sync failed",
+      body: "Network unavailable",
+      sourceEventId: "event-4",
+      payload: {
+        eventType: "sync.run.updated",
+        eventSequence: 4,
+        status: "failed",
+        message: "Network unavailable",
+      },
+    });
+
+    expect(
+      projectSyncEventToNotification({
+        id: "event-5",
+        workspaceId: "local",
+        sequence: 5,
+        type: "task.changed",
+        taskId: "task-1",
+        changeId: "change-5",
+        payload: { action: "task.update" },
+        createdAt: "2026-05-16T12:02:00.000Z",
+      }),
+    ).toBeNull();
+  });
+
+  it("enqueues projected notifications from sync events through the local queue API", async () => {
+    const api = createNotificationApi({
+      store: createInMemoryNotificationStore(),
+      now: () => new Date("2026-05-16T12:00:00.000Z"),
+    });
+
+    const result = await enqueueNotificationsFromSyncEvents({
+      notificationApi: api,
+      events: [
+        {
+          id: "event-1",
+          workspaceId: "local",
+          sequence: 1,
+          type: "task.changed",
+          taskId: "task-1",
+          changeId: "change-1",
+          payload: { action: "task.update" },
+          createdAt: "2026-05-16T11:59:00.000Z",
+        },
+        {
+          id: "event-2",
+          workspaceId: "local",
+          sequence: 2,
+          type: "conflict.raised",
+          taskId: "task-1",
+          changeId: "change-2",
+          conflictId: "conflict-change-2",
+          payload: { reason: "Task version conflict" },
+          createdAt: "2026-05-16T12:00:00.000Z",
+        },
+      ],
+    });
+
+    expect(result).toMatchObject({
+      enqueuedCount: 1,
+      ignoredCount: 1,
+      notifications: [
+        {
+          id: "notification-1",
+          type: "conflict.raised",
+          status: "queued",
+          sourceEventId: "event-2",
+          conflictId: "conflict-change-2",
+        },
+      ],
+    });
+
+    await expect(
+      api.listNotifications(
+        createListNotificationsRequest({
+          workspaceId: "local",
+          deviceId: "desktop-1",
+          status: "queued",
+          limit: 10,
+        }),
+      ),
+    ).resolves.toMatchObject({
+      notifications: [
+        {
+          id: "notification-1",
+          type: "conflict.raised",
+          sourceEventId: "event-2",
         },
       ],
     });

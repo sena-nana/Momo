@@ -93,4 +93,20 @@ describe("API README", () => {
     expect(readme).toContain("no in-app delivery channel");
     expect(readme).toContain("no background worker");
   });
+
+  it("documents notification event projection as a queue source boundary", () => {
+    const readme = readFileSync(
+      resolve(process.cwd(), "../../apps/api/README.md"),
+      "utf-8",
+    );
+
+    expect(readme).toContain("notification event projection boundary");
+    expect(readme).toContain("projectSyncEventToNotification()");
+    expect(readme).toContain("enqueueNotificationsFromSyncEvents()");
+    expect(readme).toContain("conflict.raised");
+    expect(readme).toContain("sync.run.updated");
+    expect(readme).toContain("queue source boundary");
+    expect(readme).toContain("not a subscription");
+    expect(readme).toContain("not notification delivery");
+  });
 });

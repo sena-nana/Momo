@@ -61,6 +61,7 @@ npm install
 - sync-generated realtime events stay in the in-memory boundary: accepted task changes publish `task.changed`，conflicts publish `conflict.raised`，rejected changes do not publish `task.changed`。
 - BE-11 Notification skeleton is currently local notification queue semantics only: `NotificationDto`、`createListNotificationsRequest()` 与 `createAcknowledgeNotificationRequest()` 只定义队列和确认回执 contract。
 - `createNotificationApi()` / `createInMemoryNotificationStore()` 只在 API skeleton 中维护内存通知队列；当前 no push delivery、no email delivery、no in-app delivery channel、no background worker。
+- notification event projection boundary: `projectSyncEventToNotification()` / `enqueueNotificationsFromSyncEvents()` 只把 `conflict.raised` 或 failed `sync.run.updated` 转成 notification queue input；这是 queue source boundary, not notification delivery、not a subscription。
 - 当前仅做纯 TypeScript contract，不接生产后端、不实现 OIDC / PostgreSQL / WebSocket。
 
 ## 本地同步前置层
