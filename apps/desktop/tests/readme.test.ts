@@ -37,6 +37,8 @@ describe("desktop README", () => {
     expect(readme).toContain("createRemoteSyncRunner");
     expect(readme).toContain("remote sync runner factory");
     expect(readme).toContain("runner: null");
+    expect(readme).toContain("createDefaultSettingsSyncRuntime");
+    expect(readme).toContain("default settings sync runtime");
     expect(readme).toContain("VITE_MOMO_SYNC_BASE_URL");
     expect(readme).toContain("VITE_MOMO_SYNC_TOKEN");
     expect(readme).toContain("default `/settings` route reads");

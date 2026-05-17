@@ -6,20 +6,20 @@ import {
   RunLocalSyncSimulationKey,
   useTaskRepository,
 } from "./data/TaskRepositoryContext";
-import { createLocalSyncRunner } from "./sync/localSyncRunner";
+import { createDefaultSettingsSyncRuntime } from "./sync/defaultSettingsSyncRuntime";
 import {
   createRemoteSyncConfig,
   type RemoteSyncEnv,
 } from "./sync/remoteSyncConfig";
 
 const repository = useTaskRepository();
-const localSyncRunner = createLocalSyncRunner(repository);
+const settingsSyncRuntime = createDefaultSettingsSyncRuntime({
+  repository,
+  remoteSyncConfig: createRemoteSyncConfig(readRemoteSyncEnv(import.meta.env)),
+});
 
-provide(
-  RemoteSyncConfigKey,
-  createRemoteSyncConfig(readRemoteSyncEnv(import.meta.env)),
-);
-provide(RunLocalSyncSimulationKey, () => localSyncRunner.runOnce());
+provide(RemoteSyncConfigKey, settingsSyncRuntime.remoteSyncConfig);
+provide(RunLocalSyncSimulationKey, settingsSyncRuntime.runLocalSyncSimulation);
 
 function readRemoteSyncEnv(env: ImportMetaEnv): RemoteSyncEnv {
   return {

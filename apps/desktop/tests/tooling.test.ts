@@ -53,6 +53,23 @@ describe("test tooling", () => {
         .map((file) => file.replace(`${desktopRoot}\\`, "")),
     ).toEqual([]);
   });
+
+  it("keeps the default settings route out of the remote runner factory", () => {
+    const desktopRoot = resolve(
+      dirname(fileURLToPath(import.meta.url)),
+      "..",
+    );
+    const appSource = readFileSync(resolve(desktopRoot, "src/App.vue"), "utf-8");
+    const defaultRuntimeSource = readFileSync(
+      resolve(desktopRoot, "src/sync/defaultSettingsSyncRuntime.ts"),
+      "utf-8",
+    );
+
+    expect(appSource).toContain("createDefaultSettingsSyncRuntime");
+    expect(appSource).not.toContain("createRemoteSyncRunner");
+    expect(defaultRuntimeSource).toContain("createLocalSyncRunner");
+    expect(defaultRuntimeSource).not.toContain("createRemoteSyncRunner");
+  });
 });
 
 function listFiles(root: string): string[] {
