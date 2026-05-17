@@ -119,6 +119,9 @@ describe("desktop README", () => {
     expect(readme).toContain("summarizeSyncEvents()");
     expect(readme).toContain("fetchRealtimeEventCatchUp()");
     expect(readme).toContain("Realtime event catch-up is not available");
+    expect(readme).toContain("docs/realtime-events-acceptance.md");
+    expect(readme).toContain("BE-04 local-only boundary");
+    expect(readme).toContain("no notification delivery");
     expect(readme).toContain("BE-01 / IF-01 production backend prerequisites");
     expect(readme).toContain("keep the default Settings route on local simulation");
     expect(readme).not.toContain("下一步建议围绕 HTTP transport 增加认证 header / base URL 配置边界");

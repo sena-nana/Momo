@@ -62,4 +62,15 @@ describe("API README", () => {
     expect(readme).toContain("conflicts publish `conflict.raised`");
     expect(readme).toContain("rejected changes do not publish `task.changed`");
   });
+
+  it("links the realtime events local-only acceptance checklist", () => {
+    const readme = readFileSync(
+      resolve(process.cwd(), "../../apps/api/README.md"),
+      "utf-8",
+    );
+
+    expect(readme).toContain("BE-04 local-only boundary");
+    expect(readme).toContain("docs/realtime-events-acceptance.md");
+    expect(readme).toContain("no notification delivery");
+  });
 });

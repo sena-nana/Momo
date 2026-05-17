@@ -62,6 +62,7 @@ BE-04 realtime events 当前只实现 contract and in-memory semantics：
 - sync-generated realtime events 仍只存在于内存边界：accepted task changes publish `task.changed`，conflicts publish `conflict.raised`，rejected changes do not publish `task.changed`。
 - 当前是 no WebSocket server、no Redis/event bus、no production backend。
 - 默认桌面 Settings 路由仍保留在 local simulation，不会因为该 route 存在而切到远程实时同步。
+- BE-04 local-only boundary checklist: `docs/realtime-events-acceptance.md`，明确当前 no notification delivery、no WebSocket server、no Redis/event bus。
 
 Task routes 目前通过 headers 注入 actor 占位：
 

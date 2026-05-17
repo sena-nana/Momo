@@ -111,6 +111,7 @@ npm install
 ## Manual acceptance
 
 - Local sync acceptance checklist: `docs/local-sync-acceptance.md`.
+- BE-04 local-only boundary checklist: `docs/realtime-events-acceptance.md`，covering sequence catch-up, no WebSocket server, no Redis/event bus, no production backend, no notification delivery, and default Settings route stays on local simulation.
 - 运行 `npm run dev`，打开 `http://localhost:1420/settings`。
 - Remote config display smoke：用 `VITE_MOMO_SYNC_BASE_URL=https://api.example.test/momo` 与 `VITE_MOMO_SYNC_TOKEN=local-dev-token` 启动 Vite，只验证配置展示。
 - confirm `Remote sync config` shows `enabled`，base URL 可见，token 只显示 configured，不显示 token 原文。
