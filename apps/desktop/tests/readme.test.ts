@@ -69,6 +69,12 @@ describe("desktop README", () => {
     expect(readme).toContain("local simulation entrypoint");
     expect(readme).toContain("Manual acceptance");
     expect(readme).toContain("http://localhost:1420/settings");
+    expect(readme).toContain("Remote config display smoke");
+    expect(readme).toContain("VITE_MOMO_SYNC_BASE_URL=https://api.example.test/momo");
+    expect(readme).toContain("VITE_MOMO_SYNC_TOKEN=local-dev-token");
+    expect(readme).toContain("confirm `Remote sync config` shows `enabled`");
+    expect(readme).toContain("confirm `Sync action` remains `Local simulation`");
+    expect(readme).toContain("default button still uses local simulation");
     expect(readme).toContain("click `Local sync simulation`");
     expect(readme).toContain("confirm `Sync status`");
     expect(readme).toContain("confirm `Pull applied`");

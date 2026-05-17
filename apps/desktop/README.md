@@ -91,6 +91,9 @@ npm install
 ## Manual acceptance
 
 - 运行 `npm run dev`，打开 `http://localhost:1420/settings`。
+- Remote config display smoke：用 `VITE_MOMO_SYNC_BASE_URL=https://api.example.test/momo` 与 `VITE_MOMO_SYNC_TOKEN=local-dev-token` 启动 Vite，只验证配置展示。
+- confirm `Remote sync config` shows `enabled`，base URL 可见，token 只显示 configured，不显示 token 原文。
+- confirm `Sync action` remains `Local simulation`；default button still uses local simulation，不会因为 env 存在而改走真实 HTTP。
 - 在 Settings 中 click `Local sync simulation`。
 - Vite smoke only verifies the route, button, and error handling；普通浏览器没有 Tauri SQL `invoke`，因此会显示本地插件不可用错误。
 - Full SQLite success flow requires `npm run tauri dev`，在桌面壳中 click `Local sync simulation`。
