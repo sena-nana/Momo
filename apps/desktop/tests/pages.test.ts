@@ -1,10 +1,11 @@
-import { fireEvent, render, screen, within } from "@testing-library/vue";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/vue";
 import { createMemoryHistory } from "vue-router";
 import { describe, expect, it, vi } from "vitest";
 import type { Component } from "vue";
 import { TaskRepositoryKey } from "../src/data/TaskRepositoryContext";
 import type {
   DatabaseStats,
+  LocalChange,
   SyncRun,
   SyncState,
   TaskRepository,
@@ -379,6 +380,121 @@ describe("desktop MVP pages", () => {
     expect(await screen.findByText("Sync history")).toBeInTheDocument();
     expect(screen.getByText("cursor-8")).toBeInTheDocument();
     expect(repository.listRecentSyncRuns).toHaveBeenCalledTimes(2);
+  });
+
+  it("shows pending local change summaries in settings and refreshes them after sync", async () => {
+    const repository = fakeRepository({
+      pendingChanges: [
+        localChange({
+          id: "change-1",
+          entityId: "task-1",
+          action: "task.update",
+          payload: {
+            id: "task-1",
+            baseVersion: 4,
+            patch: { title: "Draft plan" },
+            updatedAt: "2026-05-16T10:00:00.000Z",
+          },
+        }),
+      ],
+    });
+    vi.mocked(repository.listPendingChanges)
+      .mockResolvedValueOnce([
+        localChange({
+          id: "change-1",
+          entityId: "task-1",
+          action: "task.update",
+          payload: {
+            id: "task-1",
+            baseVersion: 4,
+            patch: { title: "Draft plan" },
+            updatedAt: "2026-05-16T10:00:00.000Z",
+          },
+        }),
+      ])
+      .mockResolvedValueOnce([]);
+    const runnerResult: SyncRunnerRunOnceResult = {
+      ok: true,
+      result: {
+        request: {
+          contractVersion: 1,
+          workspaceId: "local",
+          deviceId: "desktop-1",
+          changes: [],
+          clientSentAt: "2026-05-16T12:00:00.000Z",
+        },
+        push: {
+          acceptedChangeIds: ["change-1"],
+          rejectedChanges: [],
+          conflicts: [],
+          serverCursor: "cursor-1",
+          summary: {
+            status: "all-synced",
+            message: "1 local change synced",
+            acceptedCount: 1,
+            rejectedCount: 0,
+            conflictCount: 0,
+            serverCursor: "cursor-1",
+          },
+        },
+        pendingConflictCount: 0,
+        pendingConflicts: [],
+      },
+    };
+
+    renderWithRepository(Settings, repository, {
+      props: { onRunLocalSyncSimulation: vi.fn().mockResolvedValue(runnerResult) },
+    });
+
+    expect(await screen.findByText("Pending changes")).toBeInTheDocument();
+    const pendingRow = screen.getByText("change-1").closest("li");
+    expect(pendingRow).not.toBeNull();
+    expect(within(pendingRow as HTMLElement).getByText("task.update")).toBeInTheDocument();
+    expect(
+      within(pendingRow as HTMLElement).getByText('patch: {"title":"Draft plan"}'),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /mark/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /delete change/i })).not.toBeInTheDocument();
+
+    await fireEvent.click(screen.getByRole("button", { name: "Run local sync simulation" }));
+
+    expect(await screen.findByText("Sync status")).toBeInTheDocument();
+    await waitFor(() => expect(repository.listPendingChanges).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(screen.queryByText("change-1")).not.toBeInTheDocument());
+  });
+
+  it("keeps settings status visible when pending local changes fail to load", async () => {
+    const repository = fakeRepository({
+      stats: {
+        databasePath: "sqlite:momo.db",
+        totalTasks: 4,
+        activeTasks: 2,
+        completedTasks: 1,
+        pendingLocalChanges: 3,
+      },
+      syncState: {
+        serverCursor: "cursor-7",
+        lastSyncedAt: "2026-05-16T12:00:00.000Z",
+        lastError: null,
+        updatedAt: "2026-05-16T12:01:00.000Z",
+      },
+    });
+    vi.mocked(repository.listPendingChanges)
+      .mockRejectedValueOnce(new Error("pending changes unavailable"))
+      .mockResolvedValueOnce([
+        localChange({ id: "change-2", entityId: "task-2", action: "task.delete" }),
+      ]);
+
+    renderWithRepository(Settings, repository);
+
+    expect(await screen.findByText("sqlite:momo.db")).toBeInTheDocument();
+    expect(screen.getByText("cursor-7")).toBeInTheDocument();
+    expect(screen.getByText("Error: pending changes unavailable")).toBeInTheDocument();
+    await fireEvent.click(screen.getByRole("button", { name: "Retry pending changes" }));
+
+    expect(await screen.findByText("Pending changes")).toBeInTheDocument();
+    expect(screen.getByText("change-2")).toBeInTheDocument();
+    expect(repository.listPendingChanges).toHaveBeenCalledTimes(2);
   });
 
   it("shows disabled remote sync configuration in settings", async () => {
@@ -913,6 +1029,7 @@ function fakeRepository(overrides: {
   stats?: DatabaseStats;
   syncState?: SyncState;
   syncRuns?: SyncRun[];
+  pendingChanges?: LocalChange[];
 } = {}): TaskRepository {
   const today = overrides.today ?? {
     overdue: [],
@@ -950,7 +1067,7 @@ function fakeRepository(overrides: {
     listInbox: vi.fn().mockResolvedValue(overrides.inbox ?? []),
     listAgenda: vi.fn().mockResolvedValue(overrides.agenda ?? []),
     getStats: vi.fn().mockResolvedValue(stats),
-    listPendingChanges: vi.fn().mockResolvedValue([]),
+    listPendingChanges: vi.fn().mockResolvedValue(overrides.pendingChanges ?? []),
     markChangeSynced: vi.fn().mockResolvedValue(undefined),
     getSyncState: vi.fn().mockResolvedValue(syncState),
     saveSyncState: vi.fn().mockResolvedValue(syncState),
@@ -963,6 +1080,19 @@ function fakeRepository(overrides: {
       serverCursor: "cursor-0",
     }),
     listRecentSyncRuns: vi.fn().mockResolvedValue(overrides.syncRuns ?? []),
+  };
+}
+
+function localChange(overrides: Partial<LocalChange> = {}): LocalChange {
+  return {
+    id: "change",
+    entityType: "task",
+    entityId: "task",
+    action: "task.create",
+    payload: { id: "task", title: "Task" },
+    createdAt: "2026-05-16T10:00:00.000Z",
+    syncedAt: null,
+    ...overrides,
   };
 }
 

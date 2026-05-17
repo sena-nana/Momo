@@ -46,6 +46,10 @@ npm install
 - `Settings` 的 Local database 卡片显示 `Pending sync`，即尚未标记 synced 的本地变更数量。
 - `TaskRepository.getSyncState()` / `saveSyncState()` 读写本地同步状态：最新 server cursor、最近同步时间、最近错误与状态更新时间。
 - `TaskRepository.recordSyncRun()` / `listRecentSyncRuns()` 维护 sync run history：记录每次手动同步演示的成功/失败、开始/结束时间、message 与 cursor，作为 Settings 后续可见性的本地边界。
+- `summarizePendingLocalChanges()` 可把待同步本地变更映射为只读摘要：change id、entity label、action、createdAt 和 payload 摘要。
+- Settings 会从 `TaskRepository.listPendingChanges()` 读取待同步本地变更，展示只读 `Pending changes` 卡片。
+- Pending changes load errors do not hide Local database, Sync state, or Sync history；该失败只影响局部卡片和 `Retry pending changes`。
+- 本地同步演示成功或失败后也会刷新 `Pending changes`，让本地队列变化可追溯。
 
 ## 共享契约
 

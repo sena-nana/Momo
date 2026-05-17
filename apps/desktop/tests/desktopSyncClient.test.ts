@@ -24,6 +24,7 @@ import {
   createSyncRunner,
   runLocalSyncSimulation,
   summarizeDeltaPushResponse,
+  summarizePendingLocalChanges,
   summarizePendingConflicts,
   type ApplyDeltaPushResult,
 } from "../src/sync/syncClient";
@@ -96,6 +97,47 @@ describe("desktop sync client adapter", () => {
 
     expect(request.changes).toEqual([]);
     expect(repository.listPendingChanges).toHaveBeenCalledTimes(1);
+  });
+
+  it("summarizes pending local changes for read-only settings display", () => {
+    expect(
+      summarizePendingLocalChanges(
+        [
+          {
+            id: "change-1",
+            entityType: "task",
+            entityId: "task-1",
+            action: "task.update",
+            payload: {
+              id: "task-1",
+              baseVersion: 4,
+              patch: { title: "Draft plan", priority: 2 },
+              updatedAt: "2026-05-16T10:00:00.000Z",
+            },
+            createdAt: "2026-05-16T10:01:00.000Z",
+            syncedAt: null,
+          },
+          {
+            id: "change-2",
+            entityType: "task",
+            entityId: "task-2",
+            action: "task.delete",
+            payload: { id: "task-2" },
+            createdAt: "2026-05-16T10:02:00.000Z",
+            syncedAt: null,
+          },
+        ],
+        1,
+      ),
+    ).toEqual([
+      {
+        id: "change-1",
+        entityLabel: "task:task-1",
+        action: "task.update",
+        createdAt: "2026-05-16T10:01:00.000Z",
+        payloadSummary: 'patch: {"title":"Draft plan","priority":2}',
+      },
+    ]);
   });
 
   it("runs a local sync simulation with the in-memory sync API", async () => {

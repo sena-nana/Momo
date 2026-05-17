@@ -6,9 +6,11 @@ import type { DatabaseStats, SyncRun, SyncState } from "../data/taskRepository";
 import type {
   LocalSyncSimulationResult,
   PendingConflictSummary,
+  PendingLocalChangeSummary,
   SyncRunnerRunOnceResult,
   SyncRunSummary,
 } from "../sync/syncClient";
+import { summarizePendingLocalChanges } from "../sync/syncClient";
 import {
   RemoteSyncConfigKey,
   RunLocalSyncSimulationKey,
@@ -41,10 +43,13 @@ const repository = useTaskRepository();
 const stats = ref<DatabaseStats | null>(null);
 const syncState = ref<SyncState | null>(null);
 const syncRuns = ref<SyncRun[]>([]);
+const pendingChanges = ref<PendingLocalChangeSummary[]>([]);
 const loading = ref(true);
 const error = ref<string | null>(null);
 const syncRunsLoading = ref(false);
 const syncRunsError = ref<string | null>(null);
+const pendingChangesLoading = ref(false);
+const pendingChangesError = ref<string | null>(null);
 const simulationResult = ref<LocalSyncSimulationResult | null>(null);
 const simulationLoading = ref(false);
 const simulationError = ref<string | null>(null);
@@ -93,7 +98,7 @@ async function load() {
     loading.value = false;
   }
 
-  await loadSyncRuns();
+  await Promise.all([loadSyncRuns(), loadPendingChanges()]);
 }
 
 async function loadSyncRuns() {
@@ -106,6 +111,20 @@ async function loadSyncRuns() {
     syncRunsError.value = String(e);
   } finally {
     syncRunsLoading.value = false;
+  }
+}
+
+async function loadPendingChanges() {
+  pendingChangesLoading.value = true;
+  pendingChangesError.value = null;
+  try {
+    const changes = await repository.listPendingChanges();
+    pendingChanges.value = summarizePendingLocalChanges(changes, 5);
+  } catch (e) {
+    pendingChanges.value = [];
+    pendingChangesError.value = String(e);
+  } finally {
+    pendingChangesLoading.value = false;
   }
 }
 
@@ -198,6 +217,34 @@ function disabledRemoteSyncConfig(): RemoteSyncConfig {
         <li><span>Last synced</span><b>{{ syncState.lastSyncedAt ?? "Never synced" }}</b></li>
         <li><span>Last error</span><b>{{ syncState.lastError ?? "None" }}</b></li>
         <li><span>Updated</span><b>{{ syncState.updatedAt ?? "Not recorded" }}</b></li>
+      </ul>
+    </div>
+
+    <div
+      v-if="(pendingChanges.length > 0 || pendingChangesError) && !loading && !error"
+      class="card"
+    >
+      <div class="section-title">
+        <h2>Pending changes</h2>
+        <span class="pill">{{ pendingChanges.length }}</span>
+      </div>
+      <div v-if="pendingChangesError" class="state state--error">
+        <p>{{ pendingChangesError }}</p>
+        <button type="button" :disabled="pendingChangesLoading" @click="loadPendingChanges">
+          <RefreshCw :size="16" aria-hidden="true" />
+          Retry pending changes
+        </button>
+      </div>
+      <ul class="conflict-list">
+        <li v-for="change in pendingChanges" :key="change.id">
+          <div>
+            <strong>{{ change.id }}</strong>
+            <span class="pill">{{ change.action }}</span>
+          </div>
+          <p>{{ change.entityLabel }}</p>
+          <p>{{ change.payloadSummary }}</p>
+          <p class="muted">Created {{ change.createdAt }}</p>
+        </li>
       </ul>
     </div>
 
