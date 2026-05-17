@@ -101,9 +101,7 @@ npm install
 - 本地同步演示成功后会重新读取 repository，并 refreshes `Sync state` 与 `Pending sync`，让 runner 写回后的 cursor / error / pending count 可见。
 - 本地同步演示成功或失败后也会刷新 `Sync history`，让本次手动运行结果可追溯。
 - 本地 sync errors refresh `Sync state` as well，所以 HTTP-like transport 或 runner 写回的 `lastError` 会显示在 Settings。
-- 当前没有真实网络请求、账号、后台任务或定时同步；这些仍属于后续 BE-01 / BE-03 范围。
-
-下一轮建议做手动验收说明和开发态检查：启动 `/settings`，点击 `Local sync simulation`，确认 `sync_state` 和 `Sync status` 刷新；仍先不接真实网络层。
+- 当前没有真实网络请求、账号、后台任务或定时同步；这些仍属于后续 BE-01 / BE-04 范围。
 
 ## Manual acceptance
 
@@ -120,11 +118,12 @@ npm install
 - confirm `Sync state` 中的 cursor / last synced / last error 状态可见。
 - 该检查使用 in-memory transport，no real network、账号、后台任务或生产同步。
 
-## Next sync boundary
+## BE-03 local sync boundary
 
-- 已建立 `delta pull application boundary`，可以把服务端返回的 delta pull 结果 apply pulled tasks into local SQLite。
-- 该边界应复用 `sync_state.serverCursor` 作为 pull 起点，并在应用完成后写回新 cursor。
-- 下一步建议围绕 HTTP transport 增加认证 header / base URL 配置边界；real HTTP transport remains later，当前仍先保持 in-memory transport 和 HTTP-like router 语义验证。
+- The local BE-03 boundary is complete enough for desktop-only validation: push/pull adapters, cursor state, run history, pending change diagnostics, rejected/conflict visibility, remote config display, and local acceptance guardrails are all covered.
+- Production sync still needs BE-01 / IF-01 production backend prerequisites before the desktop default can talk to a real service: identity, tenant storage, RLS/persistence, deployment, and operational policy.
+- Next roadmap boundary: BE-04 realtime events can build on the existing contract and HTTP-like route semantics, but should still keep the default Settings route on local simulation until production backend prerequisites exist.
+- Continue to keep the default Settings route on local simulation; do not switch it to remote sync or background sync by configuration alone.
 
 ## 当前限制
 
