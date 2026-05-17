@@ -2,15 +2,19 @@ import { describe, expect, it } from "vitest";
 import {
   API_ROUTES,
   createApiRouter,
+  createInMemoryNotificationStore,
   createInMemorySyncStore,
   createInMemorySyncEventStore,
   createInMemoryTaskRepository,
+  createNotificationApi,
   createSyncApi,
   createSyncEventApi,
   createTaskService,
 } from "../../../apps/api/src";
 import {
+  createAcknowledgeNotificationRequest,
   createDeltaPushRequest,
+  createListNotificationsRequest,
   createListSyncEventsRequest,
   createListTaskConflictsRequest,
   createResolveTaskConflictRequest,
@@ -30,6 +34,8 @@ describe("API route adapter skeleton", () => {
       "GET /sync/conflicts",
       "POST /sync/conflicts/resolve",
       "GET /sync/events",
+      "GET /notifications",
+      "POST /notifications/:id/ack",
     ]);
   });
 
@@ -446,6 +452,58 @@ describe("API route adapter skeleton", () => {
       },
     });
   });
+
+  it("routes local notification list and acknowledgement requests", async () => {
+    const router = createRouter();
+
+    await expect(
+      router.handle({
+        method: "GET",
+        path: "/notifications",
+        body: createListNotificationsRequest({
+          workspaceId: "workspace-a",
+          deviceId: "desktop-1",
+          status: "queued",
+          limit: 10,
+        }),
+      }),
+    ).resolves.toMatchObject({
+      status: 200,
+      body: {
+        notifications: [
+          {
+            id: "notification-1",
+            workspaceId: "workspace-a",
+            type: "conflict.raised",
+            status: "queued",
+            title: "Sync conflict needs review",
+          },
+        ],
+      },
+    });
+
+    await expect(
+      router.handle({
+        method: "POST",
+        path: "/notifications/notification-1/ack",
+        body: createAcknowledgeNotificationRequest({
+          workspaceId: "workspace-a",
+          deviceId: "desktop-1",
+          notificationId: "notification-1",
+          acknowledgedBy: "user-1",
+        }),
+      }),
+    ).resolves.toMatchObject({
+      status: 200,
+      body: {
+        notification: {
+          id: "notification-1",
+          status: "acknowledged",
+          acknowledgedAt: "2026-05-16T12:00:00.000Z",
+        },
+      },
+    });
+  });
 });
 
 function createRouter() {
@@ -460,6 +518,7 @@ function createRouter() {
       now: () => new Date("2026-05-16T12:00:00.000Z"),
     }),
     syncEventApi: seededSyncEventApi(),
+    notificationApi: seededNotificationApi(),
   });
 }
 
@@ -476,6 +535,25 @@ function seededSyncEventApi() {
     payload: { title: "Seeded event" },
   });
   return eventApi;
+}
+
+function seededNotificationApi() {
+  const notificationApi = createNotificationApi({
+    store: createInMemoryNotificationStore(),
+    now: () => new Date("2026-05-16T12:00:00.000Z"),
+  });
+  void notificationApi.enqueueNotification({
+    workspaceId: "workspace-a",
+    type: "conflict.raised",
+    title: "Sync conflict needs review",
+    body: "Task changed in two places",
+    sourceEventId: "event-3",
+    taskId: "task-1",
+    changeId: "change-3",
+    conflictId: "conflict-change-3",
+    payload: { reason: "Task version conflict" },
+  });
+  return notificationApi;
 }
 
 function actorHeaders(workspaceId: string, role: string) {

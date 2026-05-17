@@ -122,6 +122,17 @@ describe("desktop README", () => {
     expect(readme).toContain("docs/realtime-events-acceptance.md");
     expect(readme).toContain("BE-04 local-only boundary");
     expect(readme).toContain("no notification delivery");
+    expect(readme).toContain("BE-11 Notification skeleton");
+    expect(readme).toContain("NotificationDto");
+    expect(readme).toContain("createListNotificationsRequest()");
+    expect(readme).toContain("createAcknowledgeNotificationRequest()");
+    expect(readme).toContain("createNotificationApi()");
+    expect(readme).toContain("createInMemoryNotificationStore()");
+    expect(readme).toContain("local notification queue semantics");
+    expect(readme).toContain("no push delivery");
+    expect(readme).toContain("no email delivery");
+    expect(readme).toContain("no in-app delivery channel");
+    expect(readme).toContain("no background worker");
     expect(readme).toContain("BE-01 / IF-01 production backend prerequisites");
     expect(readme).toContain("keep the default Settings route on local simulation");
     expect(readme).not.toContain("下一步建议围绕 HTTP transport 增加认证 header / base URL 配置边界");

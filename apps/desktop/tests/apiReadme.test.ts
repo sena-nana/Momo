@@ -73,4 +73,24 @@ describe("API README", () => {
     expect(readme).toContain("docs/realtime-events-acceptance.md");
     expect(readme).toContain("no notification delivery");
   });
+
+  it("documents the notification skeleton as a local queue without delivery channels", () => {
+    const readme = readFileSync(
+      resolve(process.cwd(), "../../apps/api/README.md"),
+      "utf-8",
+    );
+
+    expect(readme).toContain("/notifications");
+    expect(readme).toContain("notifications.list");
+    expect(readme).toContain("/notifications/:id/ack");
+    expect(readme).toContain("notifications.acknowledge");
+    expect(readme).toContain("Notification scope");
+    expect(readme).toContain("createNotificationApi()");
+    expect(readme).toContain("createInMemoryNotificationStore()");
+    expect(readme).toContain("local notification queue semantics");
+    expect(readme).toContain("no push delivery");
+    expect(readme).toContain("no email delivery");
+    expect(readme).toContain("no in-app delivery channel");
+    expect(readme).toContain("no background worker");
+  });
 });

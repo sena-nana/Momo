@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   SYNC_CONTRACT_VERSION,
+  createAcknowledgeNotificationRequest,
   createDeltaPullRequest,
   createDeltaPushRequest,
+  createListNotificationsRequest,
   createListSyncEventsRequest,
   createListTaskConflictsRequest,
   createResolveTaskConflictRequest,
@@ -10,6 +12,8 @@ import {
 } from "../../../packages/contracts/src";
 import {
   createInMemorySyncEventStore,
+  createInMemoryNotificationStore,
+  createNotificationApi,
   createInMemorySyncStore,
   createSyncApi,
   createSyncEventApi,
@@ -918,6 +922,133 @@ describe("API sync service skeleton", () => {
         },
       ],
       latestSequence: 3,
+    });
+  });
+
+  it("queues local notifications and lists them by status without delivering channels", async () => {
+    const api = createNotificationApi({
+      store: createInMemoryNotificationStore(),
+      now: () => new Date("2026-05-16T12:00:00.000Z"),
+    });
+
+    const notification = await api.enqueueNotification({
+      workspaceId: "local",
+      type: "conflict.raised",
+      title: "Sync conflict needs review",
+      body: "Task changed in two places",
+      sourceEventId: "event-3",
+      taskId: "task-1",
+      changeId: "change-3",
+      conflictId: "conflict-change-3",
+      payload: { reason: "Task version conflict" },
+    });
+
+    expect(notification).toMatchObject({
+      id: "notification-1",
+      workspaceId: "local",
+      type: "conflict.raised",
+      status: "queued",
+      title: "Sync conflict needs review",
+      body: "Task changed in two places",
+      sourceEventId: "event-3",
+      conflictId: "conflict-change-3",
+      payload: { reason: "Task version conflict" },
+      createdAt: "2026-05-16T12:00:00.000Z",
+      acknowledgedAt: null,
+    });
+
+    await api.enqueueNotification({
+      workspaceId: "local",
+      type: "sync.run.failed",
+      title: "Sync failed",
+      body: "Network unavailable",
+      sourceEventId: null,
+      payload: { message: "offline" },
+    });
+
+    await expect(
+      api.listNotifications(
+        createListNotificationsRequest({
+          workspaceId: "local",
+          deviceId: "desktop-1",
+          status: "queued",
+          limit: 10,
+        }),
+      ),
+    ).resolves.toMatchObject({
+      contractVersion: SYNC_CONTRACT_VERSION,
+      notifications: [
+        { id: "notification-1", type: "conflict.raised", status: "queued" },
+        { id: "notification-2", type: "sync.run.failed", status: "queued" },
+      ],
+      serverTime: "2026-05-16T12:00:00.000Z",
+    });
+  });
+
+  it("acknowledges queued notifications without deleting them or delivering messages", async () => {
+    const api = createNotificationApi({
+      store: createInMemoryNotificationStore(),
+      now: () => new Date("2026-05-16T12:00:00.000Z"),
+    });
+
+    await api.enqueueNotification({
+      workspaceId: "local",
+      type: "approval.required",
+      title: "Manual approval required",
+      body: null,
+      sourceEventId: null,
+      payload: { runId: "run-1" },
+    });
+
+    await expect(
+      api.acknowledgeNotification(
+        createAcknowledgeNotificationRequest({
+          workspaceId: "local",
+          deviceId: "desktop-1",
+          notificationId: "notification-1",
+          acknowledgedBy: "user-1",
+        }),
+      ),
+    ).resolves.toMatchObject({
+      contractVersion: SYNC_CONTRACT_VERSION,
+      notification: {
+        id: "notification-1",
+        status: "acknowledged",
+        acknowledgedAt: "2026-05-16T12:00:00.000Z",
+      },
+      serverTime: "2026-05-16T12:00:00.000Z",
+    });
+
+    await expect(
+      api.listNotifications(
+        createListNotificationsRequest({
+          workspaceId: "local",
+          deviceId: "desktop-1",
+          status: "queued",
+          limit: 10,
+        }),
+      ),
+    ).resolves.toMatchObject({
+      notifications: [],
+    });
+
+    await expect(
+      api.listNotifications(
+        createListNotificationsRequest({
+          workspaceId: "local",
+          deviceId: "desktop-1",
+          status: "acknowledged",
+          limit: 10,
+        }),
+      ),
+    ).resolves.toMatchObject({
+      notifications: [
+        {
+          id: "notification-1",
+          status: "acknowledged",
+          acknowledgedAt: "2026-05-16T12:00:00.000Z",
+        },
+      ],
     });
   });
 });

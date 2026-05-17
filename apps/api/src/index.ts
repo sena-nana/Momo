@@ -1,16 +1,24 @@
 import {
   SYNC_CONTRACT_VERSION,
+  createNotification,
   createSyncEvent,
   createTaskConflict,
+  type AcknowledgeNotificationRequest,
+  type AcknowledgeNotificationResponse,
   type DeltaPullRequest,
   type DeltaPullResponse,
   type DeltaPushRequest,
   type DeltaPushResponse,
+  type ListNotificationsRequest,
+  type ListNotificationsResponse,
   type ListSyncEventsRequest,
   type ListSyncEventsResponse,
   type ListTaskConflictsRequest,
   type ListTaskConflictsResponse,
   type LocalChangeDto,
+  type NotificationDto,
+  type NotificationListStatusDto,
+  type NotificationTypeDto,
   type ResolveTaskConflictRequest,
   type ResolveTaskConflictResponse,
   type SyncEventDto,
@@ -39,9 +47,31 @@ export interface SyncEventApi {
   listEvents(request: ListSyncEventsRequest): Promise<ListSyncEventsResponse>;
 }
 
+export interface NotificationApi {
+  enqueueNotification(input: EnqueueNotificationInput): Promise<NotificationDto>;
+  listNotifications(
+    request: ListNotificationsRequest,
+  ): Promise<ListNotificationsResponse>;
+  acknowledgeNotification(
+    request: AcknowledgeNotificationRequest,
+  ): Promise<AcknowledgeNotificationResponse>;
+}
+
 export interface PublishSyncEventInput {
   workspaceId: string;
   type: SyncEventTypeDto;
+  taskId?: string;
+  changeId?: string;
+  conflictId?: string;
+  payload: unknown;
+}
+
+export interface EnqueueNotificationInput {
+  workspaceId: string;
+  type: NotificationTypeDto;
+  title: string;
+  body?: string | null;
+  sourceEventId?: string | null;
   taskId?: string;
   changeId?: string;
   conflictId?: string;
@@ -60,6 +90,20 @@ export interface SyncEventStore {
 export interface SyncEventSnapshot {
   events: SyncEventDto[];
   latestSequence: number;
+}
+
+export interface NotificationStore {
+  enqueue(input: EnqueueNotificationInput, now: Date): Promise<NotificationDto>;
+  list(
+    workspaceId: string,
+    status: NotificationListStatusDto,
+    limit: number,
+  ): Promise<NotificationDto[]>;
+  acknowledge(
+    workspaceId: string,
+    notificationId: string,
+    now: Date,
+  ): Promise<NotificationDto>;
 }
 
 export interface SyncStore {
@@ -113,6 +157,11 @@ interface StoredWorkspace {
 interface StoredEventWorkspace {
   nextSequence: number;
   events: SyncEventDto[];
+}
+
+interface StoredNotificationWorkspace {
+  nextId: number;
+  notifications: NotificationDto[];
 }
 
 interface TaskPayload {
@@ -267,6 +316,46 @@ export function createSyncEventApi({
   };
 }
 
+export function createNotificationApi({
+  store,
+  now = () => new Date(),
+}: {
+  store: NotificationStore;
+  now?: () => Date;
+}): NotificationApi {
+  return {
+    async enqueueNotification(input) {
+      return store.enqueue(input, now());
+    },
+
+    async listNotifications(request) {
+      assertSupportedContract(request.contractVersion);
+      return {
+        contractVersion: SYNC_CONTRACT_VERSION,
+        notifications: await store.list(
+          request.workspaceId,
+          request.status,
+          request.limit,
+        ),
+        serverTime: now().toISOString(),
+      };
+    },
+
+    async acknowledgeNotification(request) {
+      assertSupportedContract(request.contractVersion);
+      return {
+        contractVersion: SYNC_CONTRACT_VERSION,
+        notification: await store.acknowledge(
+          request.workspaceId,
+          request.notificationId,
+          now(),
+        ),
+        serverTime: now().toISOString(),
+      };
+    },
+  };
+}
+
 export function createInMemorySyncEventStore(): SyncEventStore {
   const workspaces = new Map<string, StoredEventWorkspace>();
 
@@ -313,6 +402,74 @@ export function createInMemorySyncEventStore(): SyncEventStore {
           .slice(0, safeLimit),
         latestSequence: workspace.nextSequence - 1,
       };
+    },
+  };
+}
+
+export function createInMemoryNotificationStore(): NotificationStore {
+  const workspaces = new Map<string, StoredNotificationWorkspace>();
+
+  function workspaceFor(workspaceId: string) {
+    let workspace = workspaces.get(workspaceId);
+    if (!workspace) {
+      workspace = {
+        nextId: 1,
+        notifications: [],
+      };
+      workspaces.set(workspaceId, workspace);
+    }
+    return workspace;
+  }
+
+  return {
+    async enqueue(input, currentTime) {
+      const workspace = workspaceFor(input.workspaceId);
+      const id = `notification-${workspace.nextId}`;
+      const notification = createNotification({
+        id,
+        workspaceId: input.workspaceId,
+        type: input.type,
+        title: input.title,
+        body: input.body,
+        sourceEventId: input.sourceEventId,
+        taskId: input.taskId,
+        changeId: input.changeId,
+        conflictId: input.conflictId,
+        payload: input.payload,
+        now: currentTime,
+      });
+
+      workspace.nextId += 1;
+      workspace.notifications.push(notification);
+      return notification;
+    },
+
+    async list(workspaceId, status, limit) {
+      const safeLimit = Math.max(0, limit);
+      return workspaceFor(workspaceId).notifications
+        .filter((notification) => {
+          if (status === "all") return true;
+          return notification.status === status;
+        })
+        .slice(0, safeLimit);
+    },
+
+    async acknowledge(workspaceId, notificationId, currentTime) {
+      const workspace = workspaceFor(workspaceId);
+      const index = workspace.notifications.findIndex(
+        (notification) => notification.id === notificationId,
+      );
+      if (index < 0) {
+        throw new Error("Notification not found");
+      }
+
+      const notification = {
+        ...workspace.notifications[index],
+        status: "acknowledged" as const,
+        acknowledgedAt: currentTime.toISOString(),
+      };
+      workspace.notifications[index] = notification;
+      return notification;
     },
   };
 }

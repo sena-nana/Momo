@@ -1,6 +1,6 @@
 # Momo API / Sync Skeleton
 
-这是路线图 BE-02 / BE-03 / BE-04 前的最小 TypeScript 服务骨架，用于把共享 sync contract 接到可测试的服务层。
+这是路线图 BE-02 / BE-03 / BE-04 / BE-11 前的最小 TypeScript 服务骨架，用于把共享 contract 接到可测试的服务层。
 
 当前范围：
 
@@ -8,6 +8,7 @@
 - 不接 OIDC、PostgreSQL、Redis、WebSocket 或生产环境。
 - 只提供纯函数式 `createSyncApi()` 与 `createInMemorySyncStore()`，方便先验证 delta push / pull 语义。
 - 只提供纯函数式 `createSyncEventApi()` 与 `createInMemorySyncEventStore()`，方便先验证 realtime event catch-up 语义。
+- 只提供纯函数式 `createNotificationApi()` 与 `createInMemoryNotificationStore()`，方便先验证 local notification queue semantics。
 - 提供纯函数式 `createTaskService()` / `createInMemoryTaskRepository()`，验证任务 CRUD 与 workspace 隔离。
 - 提供 HTTP-like `createApiRouter()`，用于在没有真实 server 的情况下测试接口分派。
 - 后续接真实 API/Gateway 时，应保持 contract 不变，替换存储与认证边界。
@@ -28,6 +29,8 @@
 | GET | `/sync/conflicts` | `sync.listConflicts` |
 | POST | `/sync/conflicts/resolve` | `sync.resolveConflict` |
 | GET | `/sync/events` | `sync.listEvents` |
+| GET | `/notifications` | `notifications.list` |
+| POST | `/notifications/:id/ack` | `notifications.acknowledge` |
 
 `GET /sync/conflicts` 是当前内存 sync 的只读待处理冲突列表，返回尚未
 `server_wins` / `client_wins` 解决的冲突。`manual` 只表示等待人工处理，
@@ -41,6 +44,10 @@
 `GET /sync/events` 是当前 realtime events 的只读 catch-up 路由，按
 `afterSequence` 返回后续事件并附带 `latestSequence`。它用于验证断线后补齐
 contract，不会打开 WebSocket。
+
+`GET /notifications` 返回当前 workspace 的本地通知队列，可按 `queued` /
+`acknowledged` / `all` 过滤。`POST /notifications/:id/ack` 只把对应通知标记为
+`acknowledged`，不会删除通知，也不会触发真实渠道投递。
 
 ## Sync visibility scope
 
@@ -63,6 +70,16 @@ BE-04 realtime events 当前只实现 contract and in-memory semantics：
 - 当前是 no WebSocket server、no Redis/event bus、no production backend。
 - 默认桌面 Settings 路由仍保留在 local simulation，不会因为该 route 存在而切到远程实时同步。
 - BE-04 local-only boundary checklist: `docs/realtime-events-acceptance.md`，明确当前 no notification delivery、no WebSocket server、no Redis/event bus。
+
+## Notification scope
+
+BE-11 Notification skeleton 当前只实现 local notification queue semantics：
+
+- `NotificationDto` 覆盖 `approval.required`、`conflict.raised`、`sync.run.failed` 与 `task.due`。
+- `createNotificationApi()` 可把通知加入内存队列，并通过 `GET /notifications` 只读列出。
+- `createInMemoryNotificationStore()` 只维护 workspace-scoped queue；`POST /notifications/:id/ack` 只更新 `status` 与 `acknowledgedAt`。
+- 当前是 no push delivery、no email delivery、no in-app delivery channel、no background worker。
+- 默认桌面 Settings 路由仍保留在 local simulation，不会因为 notification route 存在而展示或订阅真实通知。
 
 Task routes 目前通过 headers 注入 actor 占位：
 

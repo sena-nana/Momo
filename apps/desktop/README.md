@@ -59,6 +59,8 @@ npm install
 - `packages/contracts` 定义 Task DTO、LocalChange DTO、Delta Push/Pull 请求响应类型。
 - BE-04 realtime events are currently contract and in-memory semantics only: `SyncEventDto`、`createListSyncEventsRequest()` 与 HTTP-like `GET /sync/events` 只验证按 sequence catch up。
 - sync-generated realtime events stay in the in-memory boundary: accepted task changes publish `task.changed`，conflicts publish `conflict.raised`，rejected changes do not publish `task.changed`。
+- BE-11 Notification skeleton is currently local notification queue semantics only: `NotificationDto`、`createListNotificationsRequest()` 与 `createAcknowledgeNotificationRequest()` 只定义队列和确认回执 contract。
+- `createNotificationApi()` / `createInMemoryNotificationStore()` 只在 API skeleton 中维护内存通知队列；当前 no push delivery、no email delivery、no in-app delivery channel、no background worker。
 - 当前仅做纯 TypeScript contract，不接生产后端、不实现 OIDC / PostgreSQL / WebSocket。
 
 ## 本地同步前置层

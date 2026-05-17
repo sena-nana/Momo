@@ -1,6 +1,8 @@
 import type {
+  AcknowledgeNotificationRequest,
   DeltaPullRequest,
   DeltaPushRequest,
+  ListNotificationsRequest,
   ListSyncEventsRequest,
   ListTaskConflictsRequest,
   ResolveTaskConflictRequest,
@@ -12,7 +14,7 @@ import type {
   TaskService,
   UpdateTaskInput,
 } from "./tasks";
-import type { SyncApi, SyncEventApi } from "./index";
+import type { NotificationApi, SyncApi, SyncEventApi } from "./index";
 
 export interface ApiRequest {
   method: string;
@@ -45,18 +47,26 @@ export const API_ROUTES = [
     name: "sync.resolveConflict",
   },
   { method: "GET", path: "/sync/events", name: "sync.listEvents" },
+  { method: "GET", path: "/notifications", name: "notifications.list" },
+  {
+    method: "POST",
+    path: "/notifications/:id/ack",
+    name: "notifications.acknowledge",
+  },
 ] as const;
 
 interface ApiRouterOptions {
   taskService: TaskService;
   syncApi: SyncApi;
   syncEventApi?: SyncEventApi;
+  notificationApi?: NotificationApi;
 }
 
 export function createApiRouter({
   taskService,
   syncApi,
   syncEventApi,
+  notificationApi,
 }: ApiRouterOptions): ApiRouter {
   return {
     async handle(request) {
@@ -70,6 +80,15 @@ export function createApiRouter({
 
         if (segments[0] === "sync") {
           return await handleSyncRoute(syncApi, syncEventApi, request, segments, body);
+        }
+
+        if (segments[0] === "notifications") {
+          return await handleNotificationRoute(
+            notificationApi,
+            request,
+            segments,
+            body,
+          );
         }
 
         return json(404, { error: "Route not found" });
@@ -159,6 +178,34 @@ async function handleSyncRoute(
   return json(404, { error: "Route not found" });
 }
 
+async function handleNotificationRoute(
+  notificationApi: NotificationApi | undefined,
+  request: ApiRequest,
+  segments: string[],
+  body: unknown,
+) {
+  if (!notificationApi) {
+    throw new Error("Notification API not configured");
+  }
+
+  if (request.method === "GET" && segments.length === 1) {
+    return json(
+      200,
+      await notificationApi.listNotifications(body as ListNotificationsRequest),
+    );
+  }
+
+  if (request.method === "POST" && segments.length === 3 && segments[2] === "ack") {
+    const ackRequest = body as AcknowledgeNotificationRequest;
+    if (ackRequest.notificationId !== segments[1]) {
+      throw new Error("Notification id mismatch");
+    }
+    return json(200, await notificationApi.acknowledgeNotification(ackRequest));
+  }
+
+  return json(404, { error: "Route not found" });
+}
+
 function actorFromHeaders(headers: ApiRequest["headers"]): TaskActor {
   const workspaceId = headers?.["x-workspace-id"];
   const userId = headers?.["x-user-id"];
@@ -208,7 +255,9 @@ function errorResponse(error: unknown) {
   if (
     message === "Task not found" ||
     message === "Conflict not found" ||
+    message === "Notification not found" ||
     message === "Sync event API not configured" ||
+    message === "Notification API not configured" ||
     message === "Route not found"
   ) {
     return json(404, { error: message });

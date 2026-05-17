@@ -4,6 +4,9 @@ import {
   createDeltaPullRequest,
   createDeltaPushRequest,
   createListSyncEventsRequest,
+  createListNotificationsRequest,
+  createAcknowledgeNotificationRequest,
+  createNotification,
   createListTaskConflictsRequest,
   createResolveTaskConflictRequest,
   createSyncEvent,
@@ -149,6 +152,68 @@ describe("sync contracts", () => {
       deviceId: "desktop-1",
       afterSequence: 6,
       limit: 25,
+    });
+  });
+
+  it("builds local notification queue envelopes and acknowledgement requests", () => {
+    expect(
+      createNotification({
+        id: "notification-1",
+        workspaceId: "local",
+        type: "conflict.raised",
+        title: "Sync conflict needs review",
+        body: "Task changed in two places",
+        sourceEventId: "event-3",
+        taskId: "task-1",
+        changeId: "change-3",
+        conflictId: "conflict-change-3",
+        payload: { reason: "Task version conflict" },
+        now: new Date("2026-05-16T08:00:00.000Z"),
+      }),
+    ).toEqual({
+      id: "notification-1",
+      workspaceId: "local",
+      type: "conflict.raised",
+      status: "queued",
+      title: "Sync conflict needs review",
+      body: "Task changed in two places",
+      sourceEventId: "event-3",
+      taskId: "task-1",
+      changeId: "change-3",
+      conflictId: "conflict-change-3",
+      payload: { reason: "Task version conflict" },
+      createdAt: "2026-05-16T08:00:00.000Z",
+      acknowledgedAt: null,
+    });
+
+    expect(
+      createListNotificationsRequest({
+        workspaceId: "local",
+        deviceId: "desktop-1",
+        status: "queued",
+        limit: 10,
+      }),
+    ).toEqual({
+      contractVersion: SYNC_CONTRACT_VERSION,
+      workspaceId: "local",
+      deviceId: "desktop-1",
+      status: "queued",
+      limit: 10,
+    });
+
+    expect(
+      createAcknowledgeNotificationRequest({
+        workspaceId: "local",
+        deviceId: "desktop-1",
+        notificationId: "notification-1",
+        acknowledgedBy: "user-1",
+      }),
+    ).toEqual({
+      contractVersion: SYNC_CONTRACT_VERSION,
+      workspaceId: "local",
+      deviceId: "desktop-1",
+      notificationId: "notification-1",
+      acknowledgedBy: "user-1",
     });
   });
 });
