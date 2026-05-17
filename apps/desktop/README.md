@@ -83,6 +83,8 @@ npm install
 - `summarizePendingConflicts()` 可把待处理冲突映射成只读展示摘要，保留 conflict/task/change id、原因、server task 标题/版本与 client payload 摘要。
 - Settings 目前会在有冲突摘要时展示只读 `Sync conflicts` 列表占位，不提供解决按钮。
 - Settings 也支持注入只读 `Sync status` 摘要，用于展示最近一次同步运行结果、计数和 cursor。
+- Settings 在本地同步演示返回 rejected changes 时会展示只读 `Sync rejections` 卡片，显示 rejected change id 与 reason。
+- Rejected changes are read-only；当前不提供自动重试、删除、覆盖或强制标记 synced 操作。
 - Settings 在本地同步演示返回 pull 结果时会展示只读 `Pull applied` 摘要：applied tasks、deleted tasks 和 pull cursor。
 - Settings 会从本地 `sync_state` 读取并展示只读 `Sync state`，用于排查 cursor、最近同步时间和最近错误。
 - Settings 会从本地 `sync_runs` 读取并展示只读 `Sync history`，当前调用 `listRecentSyncRuns(3)` 展示最近三次运行的 status、message、cursor、started/finished 时间。

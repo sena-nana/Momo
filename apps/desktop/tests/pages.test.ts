@@ -594,6 +594,56 @@ describe("desktop MVP pages", () => {
     expect(screen.queryByRole("button", { name: /resolve/i })).not.toBeInTheDocument();
   });
 
+  it("shows read-only sync rejection details after local sync simulation", async () => {
+    const repository = fakeRepository();
+    const runnerResult: SyncRunnerRunOnceResult = {
+      ok: true,
+      result: {
+        request: {
+          contractVersion: 1,
+          workspaceId: "local",
+          deviceId: "desktop-1",
+          changes: [],
+          clientSentAt: "2026-05-16T12:00:00.000Z",
+        },
+        push: {
+          acceptedChangeIds: [],
+          rejectedChanges: [{ id: "change-2", reason: "Invalid payload" }],
+          conflicts: [],
+          serverCursor: "cursor-1",
+          summary: {
+            status: "has-rejections",
+            message: "1 local change needs retry or repair",
+            acceptedCount: 0,
+            rejectedCount: 1,
+            conflictCount: 0,
+            serverCursor: "cursor-1",
+          },
+        },
+        pendingConflictCount: 0,
+        pendingConflicts: [],
+      },
+    };
+
+    renderWithRepository(Settings, repository, {
+      props: { onRunLocalSyncSimulation: vi.fn().mockResolvedValue(runnerResult) },
+    });
+
+    await fireEvent.click(
+      await screen.findByRole("button", { name: "Run local sync simulation" }),
+    );
+
+    expect(await screen.findByText("Sync rejections")).toBeInTheDocument();
+    const rejectionRow = screen.getByText("change-2").closest("li");
+    expect(rejectionRow).not.toBeNull();
+    expect(
+      within(rejectionRow as HTMLElement).getByText("Invalid payload"),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /retry rejected/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /delete rejected/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /force/i })).not.toBeInTheDocument();
+  });
+
   it("runs an injected local sync simulation from settings", async () => {
     const repository = fakeRepository();
     const onRunLocalSyncSimulation = vi.fn().mockResolvedValue({

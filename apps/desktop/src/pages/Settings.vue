@@ -68,6 +68,9 @@ const visibleSyncSummary = computed(
   () => simulationResult.value?.push.summary ?? props.syncSummary ?? null,
 );
 const visiblePullSummary = computed(() => simulationResult.value?.pull ?? null);
+const visibleRejections = computed(
+  () => simulationResult.value?.push.rejectedChanges ?? [],
+);
 const visibleConflicts = computed(
   () => simulationResult.value?.pendingConflicts ?? props.pendingConflicts,
 );
@@ -329,6 +332,21 @@ function disabledRemoteSyncConfig(): RemoteSyncConfig {
         <li><span>Rejected</span><b>{{ visibleSyncSummary.rejectedCount }}</b></li>
         <li><span>Conflicts</span><b>{{ visibleSyncSummary.conflictCount }}</b></li>
         <li><span>Cursor</span><b>{{ visibleSyncSummary.serverCursor }}</b></li>
+      </ul>
+    </div>
+
+    <div v-if="visibleRejections.length > 0" class="card">
+      <div class="section-title">
+        <h2>Sync rejections</h2>
+        <span class="pill">{{ visibleRejections.length }}</span>
+      </div>
+      <ul class="conflict-list">
+        <li v-for="rejection in visibleRejections" :key="rejection.id">
+          <div>
+            <strong>{{ rejection.id }}</strong>
+          </div>
+          <p>{{ rejection.reason }}</p>
+        </li>
       </ul>
     </div>
 
