@@ -1,15 +1,19 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   createApiRouter,
+  createInMemorySyncEventStore,
   createInMemorySyncStore,
   createInMemoryTaskRepository,
   createSyncApi,
+  createSyncEventApi,
   createTaskService,
 } from "../../../apps/api/src";
 import * as apiModule from "../../../apps/api/src";
 import {
+  createListSyncEventsRequest,
   createDeltaPushRequest,
   SYNC_CONTRACT_VERSION,
+  type ListSyncEventsResponse,
   type DeltaPushRequest,
   type DeltaPushResponse,
   type DeltaPullResponse,
@@ -251,6 +255,10 @@ describe("desktop sync client adapter", () => {
   });
 
   it("adapts sync runner transport calls to HTTP-like API router routes", async () => {
+    const eventApi = createSyncEventApi({
+      store: createInMemorySyncEventStore(),
+      now: () => new Date("2026-05-16T12:00:00.000Z"),
+    });
     const router = createApiRouter({
       taskService: createTaskService({
         repository: createInMemoryTaskRepository(),
@@ -261,6 +269,7 @@ describe("desktop sync client adapter", () => {
         store: createInMemorySyncStore(),
         now: () => new Date("2026-05-16T12:00:00.000Z"),
       }),
+      syncEventApi: eventApi,
     });
     const transport = createHttpLikeSyncTransport({ router });
     const pushRequest = createDeltaPushRequest({
@@ -316,6 +325,19 @@ describe("desktop sync client adapter", () => {
       conflicts: [],
       serverCursor: "cursor-1",
     });
+    await expect(
+      transport.listEvents?.(
+        createListSyncEventsRequest({
+          workspaceId: "local",
+          deviceId: "desktop-1",
+          afterSequence: 0,
+          limit: 10,
+        }),
+      ),
+    ).resolves.toMatchObject({
+      events: [],
+      latestSequence: 0,
+    });
   });
 
   it("adapts sync runner transport calls to injected HTTP fetch requests", async () => {
@@ -348,6 +370,61 @@ describe("desktop sync client adapter", () => {
     });
     expect(fetch).toHaveBeenCalledWith(
       "https://api.example.test/momo/sync/delta/push",
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+        },
+        body: JSON.stringify(request),
+      },
+    );
+  });
+
+  it("adapts realtime event catch-up calls through the injected HTTP transport", async () => {
+    const fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: vi.fn().mockResolvedValue({
+        contractVersion: SYNC_CONTRACT_VERSION,
+        events: [
+          {
+            id: "event-1",
+            workspaceId: "local",
+            sequence: 1,
+            type: "task.changed",
+            taskId: "task-1",
+            changeId: "change-1",
+            payload: { action: "task.create" },
+            createdAt: "2026-05-16T12:00:00.000Z",
+          },
+        ],
+        latestSequence: 1,
+        serverTime: "2026-05-16T12:00:00.000Z",
+      } satisfies ListSyncEventsResponse),
+    });
+    const transport = createHttpSyncTransport({
+      baseUrl: "https://api.example.test/momo/",
+      fetch,
+    });
+    const request = createListSyncEventsRequest({
+      workspaceId: "local",
+      deviceId: "desktop-1",
+      afterSequence: 0,
+      limit: 10,
+    });
+
+    await expect(transport.listEvents?.(request)).resolves.toMatchObject({
+      events: [
+        {
+          id: "event-1",
+          type: "task.changed",
+          taskId: "task-1",
+        },
+      ],
+      latestSequence: 1,
+    });
+    expect(fetch).toHaveBeenCalledWith(
+      "https://api.example.test/momo/sync/events",
       {
         method: "POST",
         headers: {
@@ -662,6 +739,31 @@ describe("desktop sync client adapter", () => {
         deviceId: "desktop-1",
         sinceCursor: null,
       },
+    });
+  });
+
+  it("surfaces HTTP-like realtime event catch-up errors as thrown errors", async () => {
+    const router = {
+      handle: vi.fn().mockResolvedValue({
+        status: 404,
+        body: { error: "Sync event API not configured" },
+      }),
+    };
+    const transport = createHttpLikeSyncTransport({ router });
+    const request = createListSyncEventsRequest({
+      workspaceId: "local",
+      deviceId: "desktop-1",
+      afterSequence: 2,
+      limit: 5,
+    });
+
+    await expect(transport.listEvents?.(request)).rejects.toThrow(
+      "GET /sync/events failed with 404: Sync event API not configured",
+    );
+    expect(router.handle).toHaveBeenCalledWith({
+      method: "GET",
+      path: "/sync/events",
+      body: request,
     });
   });
 

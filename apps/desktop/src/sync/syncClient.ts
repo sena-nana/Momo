@@ -6,6 +6,8 @@ import {
   type DeltaPullRequest,
   type DeltaPushResponse,
   type DeltaPushRequest,
+  type ListSyncEventsRequest,
+  type ListSyncEventsResponse,
   type ListTaskConflictsResponse,
   type LocalChangeDto,
   type TaskConflictDto,
@@ -40,6 +42,7 @@ export async function buildDeltaPushFromPendingChanges({
 export interface LocalSyncSimulationApi {
   deltaPush(request: DeltaPushRequest): Promise<DeltaPushResponse>;
   deltaPull?(request: DeltaPullRequest): Promise<DeltaPullResponse>;
+  listEvents?(request: ListSyncEventsRequest): Promise<ListSyncEventsResponse>;
   listConflicts(request: {
     contractVersion: 1;
     workspaceId: string;

@@ -3,6 +3,8 @@ import type {
   DeltaPullResponse,
   DeltaPushRequest,
   DeltaPushResponse,
+  ListSyncEventsRequest,
+  ListSyncEventsResponse,
   ListTaskConflictsRequest,
   ListTaskConflictsResponse,
 } from "../../../../packages/contracts/src";
@@ -60,6 +62,15 @@ export function createHttpSyncTransport({
         request,
       );
     },
+    listEvents(request) {
+      return postSyncRoute<ListSyncEventsResponse>(
+        fetch,
+        baseUrl,
+        headers,
+        "/sync/events",
+        request,
+      );
+    },
   };
 }
 
@@ -68,7 +79,11 @@ async function postSyncRoute<TResponse>(
   baseUrl: string,
   headers: HttpSyncTransportOptions["headers"],
   path: string,
-  body: DeltaPushRequest | DeltaPullRequest | ListTaskConflictsRequest,
+  body:
+    | DeltaPushRequest
+    | DeltaPullRequest
+    | ListTaskConflictsRequest
+    | ListSyncEventsRequest,
 ): Promise<TResponse> {
   if (!baseUrl.trim()) {
     throw new Error("HTTP sync baseUrl is not configured");

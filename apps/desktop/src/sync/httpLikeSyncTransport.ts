@@ -4,6 +4,8 @@ import type {
   DeltaPullResponse,
   DeltaPushRequest,
   DeltaPushResponse,
+  ListSyncEventsRequest,
+  ListSyncEventsResponse,
   ListTaskConflictsRequest,
   ListTaskConflictsResponse,
 } from "../../../../packages/contracts/src";
@@ -41,6 +43,14 @@ export function createHttpLikeSyncTransport({
         request,
       );
     },
+    listEvents(request) {
+      return handleSyncRoute<ListSyncEventsResponse>(
+        router,
+        "GET",
+        "/sync/events",
+        request,
+      );
+    },
   };
 }
 
@@ -48,7 +58,11 @@ async function handleSyncRoute<TResponse>(
   router: Pick<ApiRouter, "handle">,
   method: string,
   path: string,
-  body: DeltaPushRequest | DeltaPullRequest | ListTaskConflictsRequest,
+  body:
+    | DeltaPushRequest
+    | DeltaPullRequest
+    | ListTaskConflictsRequest
+    | ListSyncEventsRequest,
 ): Promise<TResponse> {
   const response = await router.handle({ method, path, body });
   if (response.status < 200 || response.status >= 300) {

@@ -68,6 +68,7 @@ npm install
 - 远端 pull 应用不会记录本地变更：`applyRemoteTask()` / `deleteRemoteTask()` 会修改 `tasks`，但 without writing `local_changes`。
 - `runLocalSyncSimulation()` 可用注入的内存 sync API 串起 pending changes、delta push、accepted 标记与 pending conflict 摘要，用于本地端到端演练；返回值包含 `pendingConflictCount`。
 - `createHttpLikeSyncTransport()` 是当前 HTTP-like sync transport boundary：把 `deltaPush()` / `deltaPull()` / `listConflicts()` 映射到 API router 的 `/sync/delta/push`、`/sync/delta/pull` 与 `/sync/conflicts`。
+- event catch-up transport boundary：`createHttpLikeSyncTransport()` can call `GET /sync/events`，`createHttpSyncTransport()` 也能通过 injected `fetch` 请求 `/sync/events`；this is sequence catch-up, not a WebSocket subscription。
 - HTTP-like transport 非 2xx 错误会保留 route/status 与 body error，便于 Settings 与 `sync_state.lastError` 排查失败来源。
 - `createHttpSyncTransport()` 定义真实 HTTP transport contract：通过 injected `fetch` 与 base URL 发送 JSON 请求，但当前不接默认 Settings 路径或生产 URL。
 - HTTP transport 支持可选 headers provider 注入 auth/client headers；缺少 base URL 时会抛出 `HTTP sync baseUrl is not configured`，且不会调用 fetch。
