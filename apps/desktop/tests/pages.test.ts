@@ -5,6 +5,7 @@ import type { Component } from "vue";
 import { TaskRepositoryKey } from "../src/data/TaskRepositoryContext";
 import type {
   DatabaseStats,
+  SyncRun,
   SyncState,
   TaskRepository,
 } from "../src/data/taskRepository";
@@ -302,6 +303,84 @@ describe("desktop MVP pages", () => {
     expect(screen.getByText("previous sync failure")).toBeInTheDocument();
   });
 
+  it("shows recent sync run history in settings", async () => {
+    const repository = fakeRepository({
+      syncRuns: [
+        {
+          id: "run-2",
+          status: "failed",
+          startedAt: "2026-05-16T12:03:00.000Z",
+          finishedAt: "2026-05-16T12:03:05.000Z",
+          message: "transport unavailable",
+          serverCursor: null,
+        },
+        {
+          id: "run-1",
+          status: "succeeded",
+          startedAt: "2026-05-16T12:00:00.000Z",
+          finishedAt: "2026-05-16T12:00:05.000Z",
+          message: "Already synced",
+          serverCursor: "cursor-8",
+        },
+      ],
+    });
+
+    renderWithRepository(Settings, repository);
+
+    expect(await screen.findByText("Sync history")).toBeInTheDocument();
+    expect(repository.listRecentSyncRuns).toHaveBeenCalledWith(3);
+    const failedRun = screen.getByText("transport unavailable").closest("li");
+    const succeededRun = screen.getByText("Already synced").closest("li");
+    expect(failedRun).not.toBeNull();
+    expect(succeededRun).not.toBeNull();
+    expect(within(failedRun as HTMLElement).getByText("failed")).toBeInTheDocument();
+    expect(within(failedRun as HTMLElement).getByText("none")).toBeInTheDocument();
+    expect(within(succeededRun as HTMLElement).getByText("succeeded")).toBeInTheDocument();
+    expect(within(succeededRun as HTMLElement).getByText("cursor-8")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /sync history/i })).not.toBeInTheDocument();
+  });
+
+  it("keeps settings status visible when sync run history fails to load", async () => {
+    const repository = fakeRepository({
+      stats: {
+        databasePath: "sqlite:momo.db",
+        totalTasks: 4,
+        activeTasks: 2,
+        completedTasks: 1,
+        pendingLocalChanges: 3,
+      },
+      syncState: {
+        serverCursor: "cursor-7",
+        lastSyncedAt: "2026-05-16T12:00:00.000Z",
+        lastError: null,
+        updatedAt: "2026-05-16T12:01:00.000Z",
+      },
+    });
+    vi.mocked(repository.listRecentSyncRuns)
+      .mockRejectedValueOnce(new Error("history unavailable"))
+      .mockResolvedValueOnce([
+        {
+          id: "run-1",
+          status: "succeeded",
+          startedAt: "2026-05-16T12:00:00.000Z",
+          finishedAt: "2026-05-16T12:00:05.000Z",
+          message: "Already synced",
+          serverCursor: "cursor-8",
+        },
+      ]);
+
+    renderWithRepository(Settings, repository);
+
+    expect(await screen.findByText("sqlite:momo.db")).toBeInTheDocument();
+    expect(screen.getByText("cursor-7")).toBeInTheDocument();
+    expect(screen.getByText("Error: history unavailable")).toBeInTheDocument();
+    await fireEvent.click(screen.getByRole("button", { name: "Retry sync history" }));
+
+    expect(await screen.findByText("Sync history")).toBeInTheDocument();
+    expect(screen.getByText("cursor-8")).toBeInTheDocument();
+    expect(repository.listRecentSyncRuns).toHaveBeenCalledTimes(2);
+  });
+
   it("shows disabled remote sync configuration in settings", async () => {
     const repository = fakeRepository();
     const remoteSyncConfig: RemoteSyncConfig = {
@@ -585,6 +664,18 @@ describe("desktop MVP pages", () => {
         lastError: null,
         updatedAt: "2026-05-16T12:00:00.000Z",
       });
+    vi.mocked(repository.listRecentSyncRuns)
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        {
+          id: "run-1",
+          status: "succeeded",
+          startedAt: "2026-05-16T12:00:00.000Z",
+          finishedAt: "2026-05-16T12:00:05.000Z",
+          message: "Already synced",
+          serverCursor: "cursor-from-history",
+        },
+      ]);
     const runnerResult: SyncRunnerRunOnceResult = {
       ok: true,
       result: {
@@ -635,11 +726,14 @@ describe("desktop MVP pages", () => {
     const lastErrorRow = screen.getByText("Last error").closest("li");
     expect(repository.getStats).toHaveBeenCalledTimes(2);
     expect(repository.getSyncState).toHaveBeenCalledTimes(2);
+    expect(repository.listRecentSyncRuns).toHaveBeenCalledTimes(2);
     expect(within(pendingRow as HTMLElement).getByText("0")).toBeInTheDocument();
     expect(
       within(serverCursorRow as HTMLElement).getByText("cursor-from-repository"),
     ).toBeInTheDocument();
     expect(within(lastErrorRow as HTMLElement).getByText("None")).toBeInTheDocument();
+    expect(await screen.findByText("Sync history")).toBeInTheDocument();
+    expect(screen.getByText("cursor-from-history")).toBeInTheDocument();
   });
 
   it("shows sync runner errors from the settings simulation callback", async () => {
@@ -818,6 +912,7 @@ function fakeRepository(overrides: {
   agenda?: Task[];
   stats?: DatabaseStats;
   syncState?: SyncState;
+  syncRuns?: SyncRun[];
 } = {}): TaskRepository {
   const today = overrides.today ?? {
     overdue: [],
@@ -867,7 +962,7 @@ function fakeRepository(overrides: {
       message: "Already synced",
       serverCursor: "cursor-0",
     }),
-    listRecentSyncRuns: vi.fn().mockResolvedValue([]),
+    listRecentSyncRuns: vi.fn().mockResolvedValue(overrides.syncRuns ?? []),
   };
 }
 

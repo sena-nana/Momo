@@ -61,6 +61,9 @@ describe("desktop README", () => {
     expect(readme).toContain("Sync status");
     expect(readme).toContain("Pull applied");
     expect(readme).toContain("Sync state");
+    expect(readme).toContain("Sync history");
+    expect(readme).toContain("listRecentSyncRuns(3)");
+    expect(readme).toContain("Sync history load errors do not hide Local database or Sync state");
     expect(readme).toContain("Remote sync config");
     expect(readme).toContain("Sync action");
     expect(readme).toContain("Local simulation");

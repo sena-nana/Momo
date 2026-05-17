@@ -79,12 +79,15 @@ npm install
 - Settings 也支持注入只读 `Sync status` 摘要，用于展示最近一次同步运行结果、计数和 cursor。
 - Settings 在本地同步演示返回 pull 结果时会展示只读 `Pull applied` 摘要：applied tasks、deleted tasks 和 pull cursor。
 - Settings 会从本地 `sync_state` 读取并展示只读 `Sync state`，用于排查 cursor、最近同步时间和最近错误。
+- Settings 会从本地 `sync_runs` 读取并展示只读 `Sync history`，当前调用 `listRecentSyncRuns(3)` 展示最近三次运行的 status、message、cursor、started/finished 时间。
+- Sync history load errors do not hide Local database or Sync state；history 有自己的局部错误和 retry 入口。
 - Settings 会展示只读 `Remote sync config`：未配置时显示 disabled reason，配置时显示 base URL 和 token configured 状态，不展示 token 原文。
 - `Remote sync config` 中的 `Sync action` 固定显示 `Local simulation`，即使远程配置 enabled，当前按钮也仍只运行本地演示，不会切换到真实 HTTP。
 - default `/settings` route reads `import.meta.env` through `createRemoteSyncConfig()` for display only；默认同步执行仍走本地 runner。
 - `sync_state` 是当前本地 `cursor state boundary`，仍只保存同步游标和错误状态，不承担任务合并。
 - Settings 可注入 `onRunLocalSyncSimulation` 显示 `Local sync simulation` 演示按钮；该按钮是 keyboard-accessible 的普通 button，只调用注入回调，不会自动连接真实网络。
 - 本地同步演示成功后会重新读取 repository，并 refreshes `Sync state` 与 `Pending sync`，让 runner 写回后的 cursor / error / pending count 可见。
+- 本地同步演示成功或失败后也会刷新 `Sync history`，让本次手动运行结果可追溯。
 - 本地 sync errors refresh `Sync state` as well，所以 HTTP-like transport 或 runner 写回的 `lastError` 会显示在 Settings。
 - 当前没有真实网络请求、账号、后台任务或定时同步；这些仍属于后续 BE-01 / BE-03 范围。
 

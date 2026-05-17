@@ -2,7 +2,7 @@
 import { computed, inject, onMounted, ref } from "vue";
 import { Database, Loader2, RefreshCw } from "lucide-vue-next";
 import { useTaskRepository } from "../data/TaskRepositoryContext";
-import type { DatabaseStats, SyncState } from "../data/taskRepository";
+import type { DatabaseStats, SyncRun, SyncState } from "../data/taskRepository";
 import type {
   LocalSyncSimulationResult,
   PendingConflictSummary,
@@ -40,8 +40,11 @@ const repository = useTaskRepository();
 
 const stats = ref<DatabaseStats | null>(null);
 const syncState = ref<SyncState | null>(null);
+const syncRuns = ref<SyncRun[]>([]);
 const loading = ref(true);
 const error = ref<string | null>(null);
+const syncRunsLoading = ref(false);
+const syncRunsError = ref<string | null>(null);
 const simulationResult = ref<LocalSyncSimulationResult | null>(null);
 const simulationLoading = ref(false);
 const simulationError = ref<string | null>(null);
@@ -74,6 +77,7 @@ onMounted(() => {
 async function load() {
   loading.value = true;
   error.value = null;
+  syncRunsError.value = null;
   try {
     const [nextStats, nextSyncState] = await Promise.all([
       repository.getStats(),
@@ -87,6 +91,21 @@ async function load() {
     error.value = String(e);
   } finally {
     loading.value = false;
+  }
+
+  await loadSyncRuns();
+}
+
+async function loadSyncRuns() {
+  syncRunsLoading.value = true;
+  syncRunsError.value = null;
+  try {
+    syncRuns.value = await repository.listRecentSyncRuns(3);
+  } catch (e) {
+    syncRuns.value = [];
+    syncRunsError.value = String(e);
+  } finally {
+    syncRunsLoading.value = false;
   }
 }
 
@@ -179,6 +198,30 @@ function disabledRemoteSyncConfig(): RemoteSyncConfig {
         <li><span>Last synced</span><b>{{ syncState.lastSyncedAt ?? "Never synced" }}</b></li>
         <li><span>Last error</span><b>{{ syncState.lastError ?? "None" }}</b></li>
         <li><span>Updated</span><b>{{ syncState.updatedAt ?? "Not recorded" }}</b></li>
+      </ul>
+    </div>
+
+    <div v-if="(syncRuns.length > 0 || syncRunsError) && !loading && !error" class="card">
+      <div class="section-title">
+        <h2>Sync history</h2>
+        <span class="pill">{{ syncRuns.length }}</span>
+      </div>
+      <div v-if="syncRunsError" class="state state--error">
+        <p>{{ syncRunsError }}</p>
+        <button type="button" :disabled="syncRunsLoading" @click="loadSyncRuns">
+          <RefreshCw :size="16" aria-hidden="true" />
+          Retry sync history
+        </button>
+      </div>
+      <ul class="conflict-list">
+        <li v-for="run in syncRuns" :key="run.id">
+          <div>
+            <strong>{{ run.message }}</strong>
+            <span class="pill">{{ run.status }}</span>
+          </div>
+          <p>Cursor: <span>{{ run.serverCursor ?? "none" }}</span></p>
+          <p class="muted">Started {{ run.startedAt }} · Finished {{ run.finishedAt }}</p>
+        </li>
       </ul>
     </div>
 
