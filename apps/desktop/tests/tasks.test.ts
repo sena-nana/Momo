@@ -3,11 +3,13 @@ import {
   groupTodayTasks,
   mapTaskRow,
   normalizeCreateTaskInput,
+  type TaskRow,
 } from "../src/domain/tasks";
 import {
   createTaskRepository,
   type LocalChangeRow,
   type SqlDatabase,
+  type TaskSyncVersionRow,
   type SyncRunRow,
   type SyncStateRow,
 } from "../src/data/taskRepository";
@@ -93,6 +95,7 @@ describe("TaskRepository", () => {
     expect(db.executedSql.join("\n")).toContain("CREATE TABLE IF NOT EXISTS local_changes");
     expect(db.executedSql.join("\n")).toContain("CREATE TABLE IF NOT EXISTS sync_state");
     expect(db.executedSql.join("\n")).toContain("CREATE TABLE IF NOT EXISTS sync_runs");
+    expect(db.executedSql.join("\n")).toContain("CREATE TABLE IF NOT EXISTS task_sync_versions");
   });
 
   it("creates a normalized active task row and records a local change", async () => {
@@ -369,6 +372,118 @@ describe("TaskRepository", () => {
       .toBe(false);
   });
 
+  it("stores pulled remote task versions outside the task UI model", async () => {
+    const db = new RecordingDatabase();
+    const repository = createTaskRepository(() => Promise.resolve(db), {
+      now: () => new Date("2026-05-16T12:00:00.000Z"),
+    });
+
+    await repository.applyRemoteTask(
+      {
+        id: "task-remote",
+        title: "Remote task",
+        notes: null,
+        status: "active",
+        priority: 1,
+        dueAt: null,
+        estimateMin: null,
+        tags: [],
+        createdAt: "2026-05-16T10:00:00.000Z",
+        updatedAt: "2026-05-16T11:00:00.000Z",
+        completedAt: null,
+      },
+      8,
+    );
+
+    expect(db.paramsForSql("INSERT INTO task_sync_versions")).toEqual([
+      "task-remote",
+      8,
+      "2026-05-16T12:00:00.000Z",
+    ]);
+    expect(db.calls.some((call) => call.sql.includes("INSERT INTO local_changes")))
+      .toBe(false);
+  });
+
+  it("records baseVersion on local updates when a remote version is known", async () => {
+    const db = new RecordingDatabase({
+      taskRows: [
+        taskRow({
+          id: "task-1",
+          title: "Local edit",
+          updated_at: "2026-05-16T12:00:00.000Z",
+        }),
+      ],
+      taskSyncVersions: [
+        {
+          task_id: "task-1",
+          remote_version: 8,
+          updated_at: "2026-05-16T11:00:00.000Z",
+        },
+      ],
+    });
+    const repository = createTaskRepository(() => Promise.resolve(db), {
+      now: () => new Date("2026-05-16T12:00:00.000Z"),
+      changeId: () => "change-1",
+    });
+
+    await repository.updateTask("task-1", { title: "Local edit" });
+
+    const localChangeParams = db.paramsForSql("INSERT INTO local_changes");
+    expect(localChangeParams?.slice(0, 4)).toEqual([
+      "change-1",
+      "task",
+      "task-1",
+      "task.update",
+    ]);
+    expect(JSON.parse(localChangeParams?.[4] as string)).toEqual({
+      id: "task-1",
+      baseVersion: 8,
+      patch: { title: "Local edit" },
+      updatedAt: "2026-05-16T12:00:00.000Z",
+    });
+  });
+
+  it("records baseVersion on local status changes when a remote version is known", async () => {
+    const db = new RecordingDatabase({
+      taskRows: [
+        taskRow({
+          id: "task-1",
+          status: "completed",
+          completed_at: "2026-05-16T12:00:00.000Z",
+          updated_at: "2026-05-16T12:00:00.000Z",
+        }),
+      ],
+      taskSyncVersions: [
+        {
+          task_id: "task-1",
+          remote_version: 5,
+          updated_at: "2026-05-16T11:00:00.000Z",
+        },
+      ],
+    });
+    const repository = createTaskRepository(() => Promise.resolve(db), {
+      now: () => new Date("2026-05-16T12:00:00.000Z"),
+      changeId: () => "change-status",
+    });
+
+    await repository.setStatus("task-1", "completed");
+
+    const localChangeParams = db.paramsForSql("INSERT INTO local_changes");
+    expect(localChangeParams?.slice(0, 4)).toEqual([
+      "change-status",
+      "task",
+      "task-1",
+      "task.status",
+    ]);
+    expect(JSON.parse(localChangeParams?.[4] as string)).toEqual({
+      id: "task-1",
+      baseVersion: 5,
+      status: "completed",
+      completedAt: "2026-05-16T12:00:00.000Z",
+      updatedAt: "2026-05-16T12:00:00.000Z",
+    });
+  });
+
   it("applies pulled remote task deletions without recording local changes", async () => {
     const db = new RecordingDatabase();
     const repository = createTaskRepository(() => Promise.resolve(db));
@@ -376,6 +491,7 @@ describe("TaskRepository", () => {
     await repository.deleteRemoteTask("task-remote");
 
     expect(db.paramsForSql("DELETE FROM tasks")).toEqual(["task-remote"]);
+    expect(db.paramsForSql("DELETE FROM task_sync_versions")).toEqual(["task-remote"]);
     expect(db.calls.some((call) => call.sql.includes("INSERT INTO local_changes")))
       .toBe(false);
   });
@@ -401,11 +517,30 @@ function baseTask() {
   };
 }
 
+function taskRow(overrides: Partial<TaskRow> = {}): TaskRow {
+  return {
+    id: "task",
+    title: "Task",
+    notes: null,
+    status: "active",
+    priority: 0,
+    due_at: null,
+    estimate_min: null,
+    tags: "[]",
+    created_at: "2026-05-16T00:00:00.000Z",
+    updated_at: "2026-05-16T00:00:00.000Z",
+    completed_at: null,
+    ...overrides,
+  };
+}
+
 class RecordingDatabase implements SqlDatabase {
   calls: Array<{ sql: string; params?: unknown[] }> = [];
 
   constructor(private rows: {
     localChanges?: LocalChangeRow[];
+    taskRows?: TaskRow[];
+    taskSyncVersions?: TaskSyncVersionRow[];
     syncState?: SyncStateRow[];
     syncRuns?: SyncRunRow[];
     stats?: Array<{
@@ -432,6 +567,12 @@ class RecordingDatabase implements SqlDatabase {
     }
     if (sql.includes("FROM local_changes")) {
       return (this.rows.localChanges ?? []) as T[];
+    }
+    if (sql.includes("FROM task_sync_versions")) {
+      return (this.rows.taskSyncVersions ?? []) as T[];
+    }
+    if (sql.includes("FROM tasks")) {
+      return (this.rows.taskRows ?? []) as T[];
     }
     if (sql.includes("FROM sync_state")) {
       return (this.rows.syncState ?? []) as T[];

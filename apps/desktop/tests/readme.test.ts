@@ -15,10 +15,12 @@ describe("desktop README", () => {
     expect(readme).toContain("Pending sync");
     expect(readme).toContain("sync_state");
     expect(readme).toContain("sync_runs");
+    expect(readme).toContain("task_sync_versions");
     expect(readme).toContain("getSyncState");
     expect(readme).toContain("saveSyncState");
     expect(readme).toContain("recordSyncRun");
     expect(readme).toContain("listRecentSyncRuns");
+    expect(readme).toContain("baseVersion");
     expect(readme).toContain("buildDeltaPushFromPendingChanges");
     expect(readme).toContain("applyDeltaPushResponse");
     expect(readme).toContain("applyDeltaPullResponse");

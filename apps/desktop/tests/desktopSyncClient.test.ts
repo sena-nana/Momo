@@ -553,6 +553,7 @@ describe("desktop sync client adapter", () => {
     );
     expect(repository.applyRemoteTask).toHaveBeenCalledWith(
       expect.objectContaining({ id: "task-remote", title: "Remote task" }),
+      2,
     );
     expect(repository.deleteRemoteTask).toHaveBeenCalledWith("task-deleted");
     expect(repository.saveSyncState).toHaveBeenCalledWith({
@@ -942,6 +943,7 @@ describe("desktop sync client adapter", () => {
     });
     expect(repository.applyRemoteTask).toHaveBeenCalledWith(
       expect.objectContaining({ id: "task-remote", title: "Pulled task" }),
+      8,
     );
     expect(repository.deleteRemoteTask).toHaveBeenCalledWith("task-removed");
     expect(transport.deltaPush).toHaveBeenCalledTimes(1);
@@ -1080,19 +1082,22 @@ describe("desktop sync client adapter", () => {
       deletedTaskCount: 1,
       serverCursor: "cursor-12",
     });
-    expect(repository.applyRemoteTask).toHaveBeenCalledWith({
-      id: "task-remote",
-      title: "Remote task",
-      notes: null,
-      status: "active",
-      priority: 1,
-      dueAt: null,
-      estimateMin: null,
-      tags: [],
-      createdAt: "2026-05-16T10:00:00.000Z",
-      updatedAt: "2026-05-16T11:00:00.000Z",
-      completedAt: null,
-    });
+    expect(repository.applyRemoteTask).toHaveBeenCalledWith(
+      {
+        id: "task-remote",
+        title: "Remote task",
+        notes: null,
+        status: "active",
+        priority: 1,
+        dueAt: null,
+        estimateMin: null,
+        tags: [],
+        createdAt: "2026-05-16T10:00:00.000Z",
+        updatedAt: "2026-05-16T11:00:00.000Z",
+        completedAt: null,
+      },
+      4,
+    );
     expect(repository.deleteRemoteTask).toHaveBeenCalledWith("task-deleted");
     expect(repository.saveSyncState).toHaveBeenCalledWith({
       serverCursor: "cursor-12",

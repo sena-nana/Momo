@@ -25,7 +25,7 @@ export interface TaskRepository {
   updateTask(id: string, patch: UpdateTaskInput): Promise<Task>;
   setStatus(id: string, status: TaskStatus): Promise<Task>;
   deleteTask(id: string): Promise<void>;
-  applyRemoteTask(task: Task): Promise<void>;
+  applyRemoteTask(task: Task, remoteVersion?: number): Promise<void>;
   deleteRemoteTask(id: string): Promise<void>;
   listPendingChanges(): Promise<LocalChange[]>;
   markChangeSynced(id: string, syncedAt?: Date): Promise<void>;
@@ -63,6 +63,12 @@ export interface LocalChangeRow {
   payload: string;
   created_at: string;
   synced_at: string | null;
+}
+
+export interface TaskSyncVersionRow {
+  task_id: string;
+  remote_version: number;
+  updated_at: string;
 }
 
 export interface SyncState {
@@ -195,6 +201,24 @@ export function createTaskRepository(
     );
   }
 
+  async function selectTaskRemoteVersion(db: SqlDatabase, taskId: string) {
+    const rows = await db.select<TaskSyncVersionRow>(
+      "SELECT * FROM task_sync_versions WHERE task_id = $1 LIMIT 1",
+      [taskId],
+    );
+    const version = rows[0]?.remote_version;
+    return typeof version === "number" ? version : null;
+  }
+
+  async function withTaskBaseVersion(
+    db: SqlDatabase,
+    taskId: string,
+    payload: Record<string, unknown>,
+  ) {
+    const baseVersion = await selectTaskRemoteVersion(db, taskId);
+    return baseVersion == null ? payload : { id: taskId, baseVersion, ...payload };
+  }
+
   return {
     databasePath: MOMO_DATABASE_PATH,
 
@@ -266,11 +290,17 @@ export function createTaskRepository(
           `UPDATE tasks SET ${updates.join(", ")} WHERE id = $${values.length}`,
           values,
         );
-        await recordLocalChange(db, taskId, "task.update", {
-          id: taskId,
-          patch: normalized,
-          updatedAt: timestamp,
-        }, timestamp);
+        await recordLocalChange(
+          db,
+          taskId,
+          "task.update",
+          await withTaskBaseVersion(db, taskId, {
+            id: taskId,
+            patch: normalized,
+            updatedAt: timestamp,
+          }),
+          timestamp,
+        );
       }
 
       return selectTask(taskId);
@@ -285,12 +315,18 @@ export function createTaskRepository(
         "UPDATE tasks SET status = $1, completed_at = $2, updated_at = $3 WHERE id = $4",
         [status, completedAt, timestamp, taskId],
       );
-      await recordLocalChange(db, taskId, "task.status", {
-        id: taskId,
-        status,
-        completedAt,
-        updatedAt: timestamp,
-      }, timestamp);
+      await recordLocalChange(
+        db,
+        taskId,
+        "task.status",
+        await withTaskBaseVersion(db, taskId, {
+          id: taskId,
+          status,
+          completedAt,
+          updatedAt: timestamp,
+        }),
+        timestamp,
+      );
       return selectTask(taskId);
     },
 
@@ -299,10 +335,16 @@ export function createTaskRepository(
       const timestamp = now().toISOString();
       const db = await getDb();
       await db.execute("DELETE FROM tasks WHERE id = $1", [taskId]);
-      await recordLocalChange(db, taskId, "task.delete", { id: taskId }, timestamp);
+      await recordLocalChange(
+        db,
+        taskId,
+        "task.delete",
+        await withTaskBaseVersion(db, taskId, { id: taskId }),
+        timestamp,
+      );
     },
 
-    async applyRemoteTask(task) {
+    async applyRemoteTask(task, remoteVersion) {
       await init();
       const db = await getDb();
       await db.execute(
@@ -323,12 +365,24 @@ export function createTaskRepository(
           completed_at = excluded.completed_at`,
         taskParams(task),
       );
+      if (typeof remoteVersion === "number") {
+        await db.execute(
+          `INSERT INTO task_sync_versions (
+            task_id, remote_version, updated_at
+          ) VALUES ($1, $2, $3)
+          ON CONFLICT(task_id) DO UPDATE SET
+            remote_version = excluded.remote_version,
+            updated_at = excluded.updated_at`,
+          [task.id, remoteVersion, now().toISOString()],
+        );
+      }
     },
 
     async deleteRemoteTask(taskId) {
       await init();
       const db = await getDb();
       await db.execute("DELETE FROM tasks WHERE id = $1", [taskId]);
+      await db.execute("DELETE FROM task_sync_versions WHERE task_id = $1", [taskId]);
     },
 
     async listPendingChanges() {
@@ -578,6 +632,11 @@ const SCHEMA = [
     message TEXT NOT NULL,
     server_cursor TEXT
   )`,
+  `CREATE TABLE IF NOT EXISTS task_sync_versions (
+    task_id TEXT PRIMARY KEY,
+    remote_version INTEGER NOT NULL CHECK (remote_version >= 0),
+    updated_at TEXT NOT NULL
+  )`,
   `INSERT OR IGNORE INTO schema_migrations (version, name, applied_at)
    VALUES (1, 'create_tasks', datetime('now'))`,
   `INSERT OR IGNORE INTO schema_migrations (version, name, applied_at)
@@ -586,6 +645,8 @@ const SCHEMA = [
    VALUES (3, 'create_sync_state', datetime('now'))`,
   `INSERT OR IGNORE INTO schema_migrations (version, name, applied_at)
    VALUES (4, 'create_sync_runs', datetime('now'))`,
+  `INSERT OR IGNORE INTO schema_migrations (version, name, applied_at)
+   VALUES (5, 'create_task_sync_versions', datetime('now'))`,
 ];
 
 function mapLocalChangeRow(row: LocalChangeRow): LocalChange {

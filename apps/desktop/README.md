@@ -40,12 +40,14 @@ npm install
 
 - SQLite 由 `@tauri-apps/plugin-sql` / `tauri-plugin-sql` 提供，连接固定为 `sqlite:momo.db`。
 - 前端通过 `TaskRepository` 访问数据，页面不直接写 SQL。
-- 当前 schema 包含 `schema_migrations`、`tasks`、`local_changes`、`sync_state` 与 `sync_runs`；`tags` 以 JSON text 存储，时间统一保存 ISO 字符串。
+- 当前 schema 包含 `schema_migrations`、`tasks`、`local_changes`、`sync_state`、`sync_runs` 与 `task_sync_versions`；`tags` 以 JSON text 存储，时间统一保存 ISO 字符串。
 - `Today` 支持快速添加今日或 Inbox 任务、查看逾期/今日/今日完成；`Inbox` 支持编辑、完成、删除无截止日期任务；`Calendar` 先提供未来 7 天只读 agenda。
 - `local_changes` 记录本地 create / update / status / delete 变更，为后续 Delta Sync 使用。
 - `Settings` 的 Local database 卡片显示 `Pending sync`，即尚未标记 synced 的本地变更数量。
 - `TaskRepository.getSyncState()` / `saveSyncState()` 读写本地同步状态：最新 server cursor、最近同步时间、最近错误与状态更新时间。
 - `TaskRepository.recordSyncRun()` / `listRecentSyncRuns()` 维护 sync run history：记录每次手动同步演示的成功/失败、开始/结束时间、message 与 cursor，作为 Settings 后续可见性的本地边界。
+- `task_sync_versions` 保存远端 task version，`applyRemoteTask(task, remoteVersion)` 在 pull 应用时更新该基线，不把 version 泄进通用 Task UI 模型。
+- 本地 `updateTask()` / `setStatus()` 记录 `local_changes` 时，如果存在远端版本，会把 `baseVersion` 写入 payload，用于后续 Delta Sync 冲突检测。
 - `summarizePendingLocalChanges()` 可把待同步本地变更映射为只读摘要：change id、entity label、action、createdAt 和 payload 摘要。
 - Settings 会从 `TaskRepository.listPendingChanges()` 读取待同步本地变更，展示只读 `Pending changes` 卡片。
 - Pending changes load errors do not hide Local database, Sync state, or Sync history；该失败只影响局部卡片和 `Retry pending changes`。

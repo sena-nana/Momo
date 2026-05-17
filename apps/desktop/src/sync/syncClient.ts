@@ -278,7 +278,7 @@ export async function applyDeltaPullResponse({
   syncedAt,
 }: ApplyDeltaPullResponseOptions): Promise<ApplyDeltaPullResult> {
   for (const task of response.tasks) {
-    await repository.applyRemoteTask(toLocalTask(task));
+    await repository.applyRemoteTask(toLocalTask(task), task.version);
   }
   for (const taskId of response.deletedTaskIds) {
     await repository.deleteRemoteTask(taskId);
