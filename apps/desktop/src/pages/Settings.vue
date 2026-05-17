@@ -5,6 +5,7 @@ import { useTaskRepository } from "../data/TaskRepositoryContext";
 import type { DatabaseStats, SyncRun, SyncState } from "../data/taskRepository";
 import type {
   LocalSyncSimulationResult,
+  PendingConflictDetailSummary,
   PendingConflictSummary,
   PendingLocalChangeSummary,
   RejectedChangeSummary,
@@ -12,6 +13,7 @@ import type {
   SyncRunSummary,
 } from "../sync/syncClient";
 import {
+  summarizePendingConflictDetails,
   summarizePendingLocalChanges,
   summarizeRejectedChanges,
 } from "../sync/syncClient";
@@ -78,8 +80,11 @@ const visibleRejections = computed<RejectedChangeSummary[]>(() =>
     pendingChanges.value,
   ),
 );
-const visibleConflicts = computed(
-  () => simulationResult.value?.pendingConflicts ?? props.pendingConflicts,
+const visibleConflicts = computed<PendingConflictDetailSummary[]>(() =>
+  summarizePendingConflictDetails(
+    simulationResult.value?.pendingConflicts ?? props.pendingConflicts,
+    pendingChanges.value,
+  ),
 );
 const runLocalSyncSimulation = computed(
   () => props.onRunLocalSyncSimulation ?? injectedRunLocalSyncSimulation,
@@ -324,6 +329,13 @@ function disabledRemoteSyncConfig(): RemoteSyncConfig {
             </span>
           </div>
           <p>{{ conflict.clientPayloadSummary }}</p>
+          <template v-if="conflict.localChange">
+            <div>
+              <span class="pill">{{ conflict.localChange.action }}</span>
+            </div>
+            <p>{{ conflict.localChange.entityLabel }}</p>
+            <p>Local change created {{ conflict.localChange.createdAt }}</p>
+          </template>
         </li>
       </ul>
     </div>

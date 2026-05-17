@@ -536,7 +536,22 @@ describe("desktop MVP pages", () => {
   });
 
   it("shows read-only pending sync conflict summaries in settings", async () => {
-    const repository = fakeRepository();
+    const repository = fakeRepository({
+      pendingChanges: [
+        localChange({
+          id: "change-4",
+          entityId: "task-1",
+          action: "task.update",
+          payload: {
+            id: "task-1",
+            baseVersion: 4,
+            patch: { title: "Local title" },
+            updatedAt: "2026-05-16T12:00:00.000Z",
+          },
+          createdAt: "2026-05-16T12:00:30.000Z",
+        }),
+      ],
+    });
     const conflicts: PendingConflictSummary[] = [
       {
         id: "conflict-1",
@@ -560,6 +575,17 @@ describe("desktop MVP pages", () => {
     expect(within(conflictRow as HTMLElement).getByText("v5")).toBeInTheDocument();
     expect(
       within(conflictRow as HTMLElement).getByText('patch: {"title":"Local title"}'),
+    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(
+        within(conflictRow as HTMLElement).getByText("task.update"),
+      ).toBeInTheDocument(),
+    );
+    expect(within(conflictRow as HTMLElement).getByText("task:task-1")).toBeInTheDocument();
+    expect(
+      within(conflictRow as HTMLElement).getByText(
+        "Local change created 2026-05-16T12:00:30.000Z",
+      ),
     ).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /resolve/i })).not.toBeInTheDocument();
   });

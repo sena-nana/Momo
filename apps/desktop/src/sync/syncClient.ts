@@ -365,6 +365,10 @@ export interface PendingConflictSummary {
   clientPayloadSummary: string;
 }
 
+export interface PendingConflictDetailSummary extends PendingConflictSummary {
+  localChange: PendingLocalChangeSummary | null;
+}
+
 export interface PendingLocalChangeSummary {
   id: string;
   entityLabel: string;
@@ -420,6 +424,20 @@ export function summarizePendingConflicts(
     serverTaskTitle: conflict.serverTask?.title ?? null,
     serverTaskVersion: conflict.serverTask?.version ?? null,
     clientPayloadSummary: summarizeClientPayload(conflict.clientPayload),
+  }));
+}
+
+export function summarizePendingConflictDetails(
+  conflicts: PendingConflictSummary[],
+  pendingChanges: PendingLocalChangeSummary[],
+): PendingConflictDetailSummary[] {
+  const pendingById = new Map(
+    pendingChanges.map((change) => [change.id, change]),
+  );
+
+  return conflicts.map((conflict) => ({
+    ...conflict,
+    localChange: pendingById.get(conflict.changeId) ?? null,
   }));
 }
 

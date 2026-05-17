@@ -81,7 +81,9 @@ npm install
 - rejected changes 与 conflicts 目前只作为摘要返回给调用方，不会自动重试、覆盖或解决冲突。
 - `SYNC_RUN_STATUSES` 固定导出同步运行状态列表；`summarizeDeltaPushResponse()` 会把一次 delta push 响应归纳成 `all-synced`、`has-rejections` 或 `has-conflicts` 状态文案；无变更时显示 `Already synced`。
 - `summarizePendingConflicts()` 可把待处理冲突映射成只读展示摘要，保留 conflict/task/change id、原因、server task 标题/版本与 client payload 摘要。
+- `summarizePendingConflictDetails()` 会把 pending conflicts 与当前 `Pending changes` 摘要按 `changeId` 关联。
 - Settings 目前会在有冲突摘要时展示只读 `Sync conflicts` 列表占位，不提供解决按钮。
+- Sync conflicts can show matching pending change action, entity, createdAt, and payload summary；如果本地 pending change 已不存在，仍保留原 conflict 摘要。
 - Settings 也支持注入只读 `Sync status` 摘要，用于展示最近一次同步运行结果、计数和 cursor。
 - Settings 在本地同步演示返回 rejected changes 时会展示只读 `Sync rejections` 卡片，显示 rejected change id 与 reason。
 - `summarizeRejectedChanges()` 会把 rejected changes 与当前 `Pending changes` 摘要按 change id 关联。

@@ -24,6 +24,7 @@ import {
   createSyncRunner,
   runLocalSyncSimulation,
   summarizeDeltaPushResponse,
+  summarizePendingConflictDetails,
   summarizePendingLocalChanges,
   summarizeRejectedChanges,
   summarizePendingConflicts,
@@ -1399,6 +1400,96 @@ describe("desktop sync client adapter", () => {
         serverTaskTitle: null,
         serverTaskVersion: null,
         clientPayloadSummary: 'status: "completed"',
+      },
+    ]);
+  });
+
+  it("links pending sync conflicts to pending local change summaries", () => {
+    const conflicts = summarizePendingConflicts([
+      {
+        id: "conflict-1",
+        workspaceId: "local",
+        taskId: "task-1",
+        changeId: "change-4",
+        reason: "Task version conflict",
+        clientPayload: {
+          id: "task-1",
+          patch: { title: "Local title" },
+          updatedAt: "2026-05-16T12:00:00.000Z",
+        },
+        serverTask: {
+          id: "task-1",
+          workspaceId: "local",
+          title: "Server title",
+          notes: null,
+          status: "active",
+          priority: 1,
+          dueAt: null,
+          estimateMin: null,
+          tags: [],
+          createdAt: "2026-05-16T10:00:00.000Z",
+          updatedAt: "2026-05-16T11:00:00.000Z",
+          completedAt: null,
+          version: 5,
+        },
+        createdAt: "2026-05-16T12:01:00.000Z",
+      },
+      {
+        id: "conflict-2",
+        workspaceId: "local",
+        taskId: "task-2",
+        changeId: "missing-change",
+        reason: "Task version conflict",
+        clientPayload: { status: "completed" },
+        serverTask: null,
+        createdAt: "2026-05-16T12:02:00.000Z",
+      },
+    ]);
+    const pendingSummaries = summarizePendingLocalChanges([
+      {
+        id: "change-4",
+        entityType: "task",
+        entityId: "task-1",
+        action: "task.update",
+        payload: {
+          id: "task-1",
+          baseVersion: 4,
+          patch: { title: "Local title" },
+          updatedAt: "2026-05-16T12:00:00.000Z",
+        },
+        createdAt: "2026-05-16T12:00:30.000Z",
+        syncedAt: null,
+      },
+    ]);
+
+    expect(summarizePendingConflictDetails(conflicts, pendingSummaries)).toEqual([
+      {
+        id: "conflict-1",
+        taskId: "task-1",
+        changeId: "change-4",
+        reason: "Task version conflict",
+        createdAt: "2026-05-16T12:01:00.000Z",
+        serverTaskTitle: "Server title",
+        serverTaskVersion: 5,
+        clientPayloadSummary: 'patch: {"title":"Local title"}',
+        localChange: {
+          id: "change-4",
+          entityLabel: "task:task-1",
+          action: "task.update",
+          createdAt: "2026-05-16T12:00:30.000Z",
+          payloadSummary: 'patch: {"title":"Local title"}',
+        },
+      },
+      {
+        id: "conflict-2",
+        taskId: "task-2",
+        changeId: "missing-change",
+        reason: "Task version conflict",
+        createdAt: "2026-05-16T12:02:00.000Z",
+        serverTaskTitle: null,
+        serverTaskVersion: null,
+        clientPayloadSummary: 'status: "completed"',
+        localChange: null,
       },
     ]);
   });

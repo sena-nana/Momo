@@ -59,7 +59,9 @@ describe("desktop README", () => {
     expect(readme).toContain("summarizeDeltaPushResponse");
     expect(readme).toContain("Already synced");
     expect(readme).toContain("summarizePendingConflicts");
+    expect(readme).toContain("summarizePendingConflictDetails()");
     expect(readme).toContain("Sync conflicts");
+    expect(readme).toContain("Sync conflicts can show matching pending change action, entity, createdAt, and payload summary");
     expect(readme).toContain("Sync status");
     expect(readme).toContain("Sync rejections");
     expect(readme).toContain("Rejected changes are read-only");
