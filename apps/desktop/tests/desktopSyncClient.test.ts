@@ -14,6 +14,7 @@ import {
   createDeltaPushRequest,
   SYNC_CONTRACT_VERSION,
   type ListSyncEventsResponse,
+  type SyncEventDto,
   type DeltaPushRequest,
   type DeltaPushResponse,
   type DeltaPullResponse,
@@ -26,7 +27,9 @@ import {
   applyDeltaPushResponse,
   buildDeltaPushFromPendingChanges,
   createSyncRunner,
+  fetchRealtimeEventCatchUp,
   runLocalSyncSimulation,
+  summarizeSyncEvents,
   summarizeDeltaPushResponse,
   summarizePendingConflictDetails,
   summarizePendingLocalChanges,
@@ -190,6 +193,152 @@ describe("desktop sync client adapter", () => {
         localChange: null,
       },
     ]);
+  });
+
+  it("summarizes realtime sync events for read-only display", () => {
+    const events: SyncEventDto[] = [
+      {
+        id: "event-1",
+        workspaceId: "local",
+        sequence: 1,
+        type: "task.changed",
+        taskId: "task-1",
+        changeId: "change-1",
+        payload: { action: "task.create" },
+        createdAt: "2026-05-16T12:00:00.000Z",
+      },
+      {
+        id: "event-2",
+        workspaceId: "local",
+        sequence: 2,
+        type: "conflict.raised",
+        taskId: "task-1",
+        changeId: "change-2",
+        conflictId: "conflict-change-2",
+        payload: { reason: "Task version conflict" },
+        createdAt: "2026-05-16T12:01:00.000Z",
+      },
+      {
+        id: "event-3",
+        workspaceId: "local",
+        sequence: 3,
+        type: "sync.run.updated",
+        payload: { status: "all-synced", acceptedCount: 1 },
+        createdAt: "2026-05-16T12:02:00.000Z",
+      },
+    ];
+
+    expect(summarizeSyncEvents(events)).toEqual([
+      {
+        id: "event-1",
+        kind: "task.changed",
+        sequence: 1,
+        createdAt: "2026-05-16T12:00:00.000Z",
+        taskId: "task-1",
+        changeId: "change-1",
+        conflictId: null,
+        payloadSummary: 'action: "task.create"',
+      },
+      {
+        id: "event-2",
+        kind: "conflict.raised",
+        sequence: 2,
+        createdAt: "2026-05-16T12:01:00.000Z",
+        taskId: "task-1",
+        changeId: "change-2",
+        conflictId: "conflict-change-2",
+        payloadSummary: 'reason: "Task version conflict"',
+      },
+      {
+        id: "event-3",
+        kind: "sync.run.updated",
+        sequence: 3,
+        createdAt: "2026-05-16T12:02:00.000Z",
+        taskId: null,
+        changeId: null,
+        conflictId: null,
+        payloadSummary: 'status: "all-synced", acceptedCount: 1',
+      },
+    ]);
+  });
+
+  it("fetches realtime event catch-up summaries without running sync", async () => {
+    const transport = {
+      deltaPush: vi.fn(),
+      listConflicts: vi.fn(),
+      listEvents: vi.fn().mockResolvedValue({
+        contractVersion: SYNC_CONTRACT_VERSION,
+        events: [
+          {
+            id: "event-4",
+            workspaceId: "local",
+            sequence: 4,
+            type: "task.changed",
+            taskId: "task-2",
+            changeId: "change-4",
+            payload: { action: "task.status" },
+            createdAt: "2026-05-16T12:04:00.000Z",
+          },
+        ],
+        latestSequence: 4,
+        serverTime: "2026-05-16T12:04:01.000Z",
+      } satisfies ListSyncEventsResponse),
+    };
+
+    await expect(
+      fetchRealtimeEventCatchUp({
+        transport,
+        workspaceId: "local",
+        deviceId: "desktop-1",
+        afterSequence: 3,
+        limit: 5,
+      }),
+    ).resolves.toEqual({
+      enabled: true,
+      latestSequence: 4,
+      serverTime: "2026-05-16T12:04:01.000Z",
+      events: [
+        {
+          id: "event-4",
+          kind: "task.changed",
+          sequence: 4,
+          createdAt: "2026-05-16T12:04:00.000Z",
+          taskId: "task-2",
+          changeId: "change-4",
+          conflictId: null,
+          payloadSummary: 'action: "task.status"',
+        },
+      ],
+    });
+    expect(transport.listEvents).toHaveBeenCalledWith({
+      contractVersion: SYNC_CONTRACT_VERSION,
+      workspaceId: "local",
+      deviceId: "desktop-1",
+      afterSequence: 3,
+      limit: 5,
+    });
+    expect(transport.deltaPush).not.toHaveBeenCalled();
+    expect(transport.listConflicts).not.toHaveBeenCalled();
+  });
+
+  it("returns a disabled realtime catch-up result when transport does not expose events", async () => {
+    await expect(
+      fetchRealtimeEventCatchUp({
+        transport: {
+          deltaPush: vi.fn(),
+          listConflicts: vi.fn(),
+        },
+        workspaceId: "local",
+        deviceId: "desktop-1",
+        afterSequence: 0,
+        limit: 5,
+      }),
+    ).resolves.toEqual({
+      enabled: false,
+      reason: "Realtime event catch-up is not available",
+      latestSequence: 0,
+      events: [],
+    });
   });
 
   it("runs a local sync simulation with the in-memory sync API", async () => {

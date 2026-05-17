@@ -116,6 +116,9 @@ describe("desktop README", () => {
     expect(readme).toContain("event catch-up transport boundary");
     expect(readme).toContain("createHttpLikeSyncTransport()` can call `GET /sync/events`");
     expect(readme).toContain("not a WebSocket subscription");
+    expect(readme).toContain("summarizeSyncEvents()");
+    expect(readme).toContain("fetchRealtimeEventCatchUp()");
+    expect(readme).toContain("Realtime event catch-up is not available");
     expect(readme).toContain("BE-01 / IF-01 production backend prerequisites");
     expect(readme).toContain("keep the default Settings route on local simulation");
     expect(readme).not.toContain("下一步建议围绕 HTTP transport 增加认证 header / base URL 配置边界");

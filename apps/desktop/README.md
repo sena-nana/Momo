@@ -49,6 +49,7 @@ npm install
 - `task_sync_versions` 保存远端 task version，`applyRemoteTask(task, remoteVersion)` 在 pull 应用时更新该基线，不把 version 泄进通用 Task UI 模型。
 - 本地 `updateTask()` / `setStatus()` 记录 `local_changes` 时，如果存在远端版本，会把 `baseVersion` 写入 payload，用于后续 Delta Sync 冲突检测。
 - `summarizePendingLocalChanges()` 可把待同步本地变更映射为只读摘要：change id、entity label、action、createdAt 和 payload 摘要。
+- `summarizeSyncEvents()` 可把 realtime event catch-up 结果映射为只读摘要；`fetchRealtimeEventCatchUp()` 只调用可选 `transport.listEvents()`，缺失时返回 `Realtime event catch-up is not available`，不会触发同步运行。
 - Settings 会从 `TaskRepository.listPendingChanges()` 读取待同步本地变更，展示只读 `Pending changes` 卡片。
 - Pending changes load errors do not hide Local database, Sync state, or Sync history；该失败只影响局部卡片和 `Retry pending changes`。
 - 本地同步演示成功或失败后也会刷新 `Pending changes`，让本地队列变化可追溯。

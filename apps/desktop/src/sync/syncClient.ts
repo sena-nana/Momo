@@ -10,6 +10,7 @@ import {
   type ListSyncEventsResponse,
   type ListTaskConflictsResponse,
   type LocalChangeDto,
+  type SyncEventDto,
   type TaskConflictDto,
   type TaskDto,
 } from "../../../../packages/contracts/src";
@@ -386,6 +387,31 @@ export interface RejectedChangeSummary {
   localChange: PendingLocalChangeSummary | null;
 }
 
+export interface SyncEventSummary {
+  id: string;
+  kind: SyncEventDto["type"];
+  sequence: number;
+  createdAt: string;
+  taskId: string | null;
+  changeId: string | null;
+  conflictId: string | null;
+  payloadSummary: string;
+}
+
+export type RealtimeEventCatchUpResult =
+  | {
+    enabled: true;
+    latestSequence: number;
+    serverTime: string;
+    events: SyncEventSummary[];
+  }
+  | {
+    enabled: false;
+    reason: string;
+    latestSequence: number;
+    events: SyncEventSummary[];
+  };
+
 export function summarizePendingLocalChanges(
   changes: LocalChange[],
   limit = 5,
@@ -413,6 +439,57 @@ export function summarizeRejectedChanges(
     reason: rejection.reason,
     localChange: pendingById.get(rejection.id) ?? null,
   }));
+}
+
+export function summarizeSyncEvents(events: SyncEventDto[]): SyncEventSummary[] {
+  return events.map((event) => ({
+    id: event.id,
+    kind: event.type,
+    sequence: event.sequence,
+    createdAt: event.createdAt,
+    taskId: event.taskId ?? null,
+    changeId: event.changeId ?? null,
+    conflictId: event.conflictId ?? null,
+    payloadSummary: summarizeClientPayload(event.payload),
+  }));
+}
+
+export async function fetchRealtimeEventCatchUp({
+  transport,
+  workspaceId,
+  deviceId,
+  afterSequence,
+  limit,
+}: {
+  transport: Pick<LocalSyncSimulationApi, "listEvents">;
+  workspaceId: string;
+  deviceId: string;
+  afterSequence: number;
+  limit: number;
+}): Promise<RealtimeEventCatchUpResult> {
+  if (!transport.listEvents) {
+    return {
+      enabled: false,
+      reason: "Realtime event catch-up is not available",
+      latestSequence: afterSequence,
+      events: [],
+    };
+  }
+
+  const response = await transport.listEvents({
+    contractVersion: 1,
+    workspaceId,
+    deviceId,
+    afterSequence,
+    limit,
+  });
+
+  return {
+    enabled: true,
+    latestSequence: response.latestSequence,
+    serverTime: response.serverTime,
+    events: summarizeSyncEvents(response.events),
+  };
 }
 
 export function summarizePendingConflicts(
