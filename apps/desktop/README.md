@@ -76,6 +76,7 @@ npm install
 - Settings 在本地同步演示返回 pull 结果时会展示只读 `Pull applied` 摘要：applied tasks、deleted tasks 和 pull cursor。
 - Settings 会从本地 `sync_state` 读取并展示只读 `Sync state`，用于排查 cursor、最近同步时间和最近错误。
 - Settings 会展示只读 `Remote sync config`：未配置时显示 disabled reason，配置时显示 base URL 和 token configured 状态，不展示 token 原文。
+- `Remote sync config` 中的 `Sync action` 固定显示 `Local simulation`，即使远程配置 enabled，当前按钮也仍只运行本地演示，不会切换到真实 HTTP。
 - default `/settings` route reads `import.meta.env` through `createRemoteSyncConfig()` for display only；默认同步执行仍走本地 runner。
 - `sync_state` 是当前本地 `cursor state boundary`，仍只保存同步游标和错误状态，不承担任务合并。
 - Settings 可注入 `onRunLocalSyncSimulation` 显示 `Local sync simulation` 演示按钮；该按钮是 keyboard-accessible 的普通 button，只调用注入回调，不会自动连接真实网络。

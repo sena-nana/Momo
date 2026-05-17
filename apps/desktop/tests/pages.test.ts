@@ -334,6 +334,9 @@ describe("desktop MVP pages", () => {
     expect(screen.getByText("enabled")).toBeInTheDocument();
     expect(screen.getByText("https://api.example.test/momo")).toBeInTheDocument();
     expect(screen.getByText("Configured")).toBeInTheDocument();
+    const syncActionRow = screen.getByText("Sync action").closest("li");
+    expect(syncActionRow).not.toBeNull();
+    expect(within(syncActionRow as HTMLElement).getByText("Local simulation")).toBeInTheDocument();
     expect(screen.queryByText("secret-token")).not.toBeInTheDocument();
   });
 
@@ -734,6 +737,9 @@ describe("desktop MVP pages", () => {
     expect(screen.getByText("enabled")).toBeInTheDocument();
     expect(screen.getByText("https://api.example.test/momo")).toBeInTheDocument();
     expect(screen.getByText("Configured")).toBeInTheDocument();
+    const syncActionRow = screen.getByText("Sync action").closest("li");
+    expect(syncActionRow).not.toBeNull();
+    expect(within(syncActionRow as HTMLElement).getByText("Local simulation")).toBeInTheDocument();
     expect(screen.queryByText("secret-token")).not.toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "Run local sync simulation" }),

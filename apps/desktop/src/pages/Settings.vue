@@ -193,6 +193,7 @@ function disabledRemoteSyncConfig(): RemoteSyncConfig {
           <li><span>Auth token</span><b>Configured</b></li>
         </template>
         <li v-else><span>Reason</span><b>{{ remoteSyncReason }}</b></li>
+        <li><span>Sync action</span><b>Local simulation</b></li>
       </ul>
     </div>
 

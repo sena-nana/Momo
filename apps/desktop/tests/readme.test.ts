@@ -54,6 +54,8 @@ describe("desktop README", () => {
     expect(readme).toContain("Pull applied");
     expect(readme).toContain("Sync state");
     expect(readme).toContain("Remote sync config");
+    expect(readme).toContain("Sync action");
+    expect(readme).toContain("Local simulation");
     expect(readme).toContain("onRunLocalSyncSimulation");
     expect(readme).toContain("Local sync simulation");
     expect(readme).toContain("keyboard-accessible");
