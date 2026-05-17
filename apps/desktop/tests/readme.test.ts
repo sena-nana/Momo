@@ -63,6 +63,8 @@ describe("desktop README", () => {
     expect(readme).toContain("Sync status");
     expect(readme).toContain("Sync rejections");
     expect(readme).toContain("Rejected changes are read-only");
+    expect(readme).toContain("summarizeRejectedChanges()");
+    expect(readme).toContain("Sync rejections can show matching pending change action, entity, and payload summary");
     expect(readme).toContain("Pull applied");
     expect(readme).toContain("Sync state");
     expect(readme).toContain("Pending changes");

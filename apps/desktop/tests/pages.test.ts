@@ -595,7 +595,22 @@ describe("desktop MVP pages", () => {
   });
 
   it("shows read-only sync rejection details after local sync simulation", async () => {
-    const repository = fakeRepository();
+    const repository = fakeRepository({
+      pendingChanges: [
+        localChange({
+          id: "change-2",
+          entityId: "task-2",
+          action: "task.update",
+          payload: {
+            id: "task-2",
+            baseVersion: 3,
+            patch: { title: "Rejected edit" },
+            updatedAt: "2026-05-16T10:00:00.000Z",
+          },
+          createdAt: "2026-05-16T10:01:00.000Z",
+        }),
+      ],
+    });
     const runnerResult: SyncRunnerRunOnceResult = {
       ok: true,
       result: {
@@ -638,6 +653,11 @@ describe("desktop MVP pages", () => {
     expect(rejectionRow).not.toBeNull();
     expect(
       within(rejectionRow as HTMLElement).getByText("Invalid payload"),
+    ).toBeInTheDocument();
+    expect(within(rejectionRow as HTMLElement).getByText("task.update")).toBeInTheDocument();
+    expect(within(rejectionRow as HTMLElement).getByText("task:task-2")).toBeInTheDocument();
+    expect(
+      within(rejectionRow as HTMLElement).getByText('patch: {"title":"Rejected edit"}'),
     ).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /retry rejected/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /delete rejected/i })).not.toBeInTheDocument();

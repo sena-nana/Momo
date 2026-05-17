@@ -7,10 +7,14 @@ import type {
   LocalSyncSimulationResult,
   PendingConflictSummary,
   PendingLocalChangeSummary,
+  RejectedChangeSummary,
   SyncRunnerRunOnceResult,
   SyncRunSummary,
 } from "../sync/syncClient";
-import { summarizePendingLocalChanges } from "../sync/syncClient";
+import {
+  summarizePendingLocalChanges,
+  summarizeRejectedChanges,
+} from "../sync/syncClient";
 import {
   RemoteSyncConfigKey,
   RunLocalSyncSimulationKey,
@@ -68,8 +72,11 @@ const visibleSyncSummary = computed(
   () => simulationResult.value?.push.summary ?? props.syncSummary ?? null,
 );
 const visiblePullSummary = computed(() => simulationResult.value?.pull ?? null);
-const visibleRejections = computed(
-  () => simulationResult.value?.push.rejectedChanges ?? [],
+const visibleRejections = computed<RejectedChangeSummary[]>(() =>
+  summarizeRejectedChanges(
+    simulationResult.value?.push.rejectedChanges ?? [],
+    pendingChanges.value,
+  ),
 );
 const visibleConflicts = computed(
   () => simulationResult.value?.pendingConflicts ?? props.pendingConflicts,
@@ -344,8 +351,15 @@ function disabledRemoteSyncConfig(): RemoteSyncConfig {
         <li v-for="rejection in visibleRejections" :key="rejection.id">
           <div>
             <strong>{{ rejection.id }}</strong>
+            <span v-if="rejection.localChange" class="pill">
+              {{ rejection.localChange.action }}
+            </span>
           </div>
           <p>{{ rejection.reason }}</p>
+          <template v-if="rejection.localChange">
+            <p>{{ rejection.localChange.entityLabel }}</p>
+            <p>{{ rejection.localChange.payloadSummary }}</p>
+          </template>
         </li>
       </ul>
     </div>

@@ -25,6 +25,7 @@ import {
   runLocalSyncSimulation,
   summarizeDeltaPushResponse,
   summarizePendingLocalChanges,
+  summarizeRejectedChanges,
   summarizePendingConflicts,
   type ApplyDeltaPushResult,
 } from "../src/sync/syncClient";
@@ -136,6 +137,52 @@ describe("desktop sync client adapter", () => {
         action: "task.update",
         createdAt: "2026-05-16T10:01:00.000Z",
         payloadSummary: 'patch: {"title":"Draft plan","priority":2}',
+      },
+    ]);
+  });
+
+  it("links rejected sync changes to pending local change summaries", () => {
+    const pendingSummaries = summarizePendingLocalChanges([
+      {
+        id: "change-2",
+        entityType: "task",
+        entityId: "task-2",
+        action: "task.update",
+        payload: {
+          id: "task-2",
+          baseVersion: 3,
+          patch: { title: "Rejected edit" },
+          updatedAt: "2026-05-16T10:00:00.000Z",
+        },
+        createdAt: "2026-05-16T10:01:00.000Z",
+        syncedAt: null,
+      },
+    ]);
+
+    expect(
+      summarizeRejectedChanges(
+        [
+          { id: "change-2", reason: "Invalid payload" },
+          { id: "missing-change", reason: "Unknown local change" },
+        ],
+        pendingSummaries,
+      ),
+    ).toEqual([
+      {
+        id: "change-2",
+        reason: "Invalid payload",
+        localChange: {
+          id: "change-2",
+          entityLabel: "task:task-2",
+          action: "task.update",
+          createdAt: "2026-05-16T10:01:00.000Z",
+          payloadSummary: 'patch: {"title":"Rejected edit"}',
+        },
+      },
+      {
+        id: "missing-change",
+        reason: "Unknown local change",
+        localChange: null,
       },
     ]);
   });

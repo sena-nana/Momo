@@ -373,6 +373,12 @@ export interface PendingLocalChangeSummary {
   payloadSummary: string;
 }
 
+export interface RejectedChangeSummary {
+  id: string;
+  reason: string;
+  localChange: PendingLocalChangeSummary | null;
+}
+
 export function summarizePendingLocalChanges(
   changes: LocalChange[],
   limit = 5,
@@ -384,6 +390,21 @@ export function summarizePendingLocalChanges(
     action: change.action,
     createdAt: change.createdAt,
     payloadSummary: summarizeClientPayload(change.payload),
+  }));
+}
+
+export function summarizeRejectedChanges(
+  rejectedChanges: DeltaPushResponse["rejectedChanges"],
+  pendingChanges: PendingLocalChangeSummary[],
+): RejectedChangeSummary[] {
+  const pendingById = new Map(
+    pendingChanges.map((change) => [change.id, change]),
+  );
+
+  return rejectedChanges.map((rejection) => ({
+    id: rejection.id,
+    reason: rejection.reason,
+    localChange: pendingById.get(rejection.id) ?? null,
   }));
 }
 
