@@ -107,6 +107,9 @@ describe("desktop README", () => {
     expect(readme).toContain("local BE-03 boundary is complete enough for desktop-only validation");
     expect(readme).toContain("Next roadmap boundary");
     expect(readme).toContain("BE-04 realtime events");
+    expect(readme).toContain("realtime events are currently contract and in-memory semantics only");
+    expect(readme).toContain("GET /sync/events");
+    expect(readme).toContain("does not start a WebSocket server");
     expect(readme).toContain("BE-01 / IF-01 production backend prerequisites");
     expect(readme).toContain("keep the default Settings route on local simulation");
     expect(readme).not.toContain("下一步建议围绕 HTTP transport 增加认证 header / base URL 配置边界");

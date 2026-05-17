@@ -6,6 +6,10 @@ export type LocalChangeActionDto =
   | "task.update"
   | "task.status"
   | "task.delete";
+export type SyncEventTypeDto =
+  | "task.changed"
+  | "sync.run.updated"
+  | "conflict.raised";
 
 export interface TaskDto {
   id: string;
@@ -78,6 +82,33 @@ export interface ListTaskConflictsResponse {
   contractVersion: typeof SYNC_CONTRACT_VERSION;
   conflicts: TaskConflictDto[];
   serverCursor: string;
+  serverTime: string;
+}
+
+export interface SyncEventDto {
+  id: string;
+  workspaceId: string;
+  sequence: number;
+  type: SyncEventTypeDto;
+  taskId?: string;
+  changeId?: string;
+  conflictId?: string;
+  payload: unknown;
+  createdAt: string;
+}
+
+export interface ListSyncEventsRequest {
+  contractVersion: typeof SYNC_CONTRACT_VERSION;
+  workspaceId: string;
+  deviceId: string;
+  afterSequence: number;
+  limit: number;
+}
+
+export interface ListSyncEventsResponse {
+  contractVersion: typeof SYNC_CONTRACT_VERSION;
+  events: SyncEventDto[];
+  latestSequence: number;
   serverTime: string;
 }
 
@@ -186,5 +217,44 @@ export function createListTaskConflictsRequest(input: {
     contractVersion: SYNC_CONTRACT_VERSION,
     workspaceId: input.workspaceId,
     deviceId: input.deviceId,
+  };
+}
+
+export function createSyncEvent(input: {
+  id: string;
+  workspaceId: string;
+  sequence: number;
+  type: SyncEventTypeDto;
+  taskId?: string;
+  changeId?: string;
+  conflictId?: string;
+  payload: unknown;
+  now: Date;
+}): SyncEventDto {
+  return {
+    id: input.id,
+    workspaceId: input.workspaceId,
+    sequence: input.sequence,
+    type: input.type,
+    ...(input.taskId ? { taskId: input.taskId } : {}),
+    ...(input.changeId ? { changeId: input.changeId } : {}),
+    ...(input.conflictId ? { conflictId: input.conflictId } : {}),
+    payload: input.payload,
+    createdAt: input.now.toISOString(),
+  };
+}
+
+export function createListSyncEventsRequest(input: {
+  workspaceId: string;
+  deviceId: string;
+  afterSequence: number;
+  limit: number;
+}): ListSyncEventsRequest {
+  return {
+    contractVersion: SYNC_CONTRACT_VERSION,
+    workspaceId: input.workspaceId,
+    deviceId: input.deviceId,
+    afterSequence: input.afterSequence,
+    limit: input.limit,
   };
 }

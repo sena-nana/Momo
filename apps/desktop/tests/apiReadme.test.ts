@@ -37,4 +37,17 @@ describe("API README", () => {
     expect(readme).toContain("client_wins");
     expect(readme).toContain("真实 HTTP server");
   });
+
+  it("documents realtime sync events as contract and in-memory semantics only", () => {
+    const readme = readFileSync(
+      resolve(process.cwd(), "../../apps/api/README.md"),
+      "utf-8",
+    );
+
+    expect(readme).toContain("/sync/events");
+    expect(readme).toContain("sync.listEvents");
+    expect(readme).toContain("Realtime events scope");
+    expect(readme).toContain("contract and in-memory semantics");
+    expect(readme).toContain("no WebSocket server");
+  });
 });

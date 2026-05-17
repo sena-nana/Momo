@@ -3,12 +3,15 @@ import {
   API_ROUTES,
   createApiRouter,
   createInMemorySyncStore,
+  createInMemorySyncEventStore,
   createInMemoryTaskRepository,
   createSyncApi,
+  createSyncEventApi,
   createTaskService,
 } from "../../../apps/api/src";
 import {
   createDeltaPushRequest,
+  createListSyncEventsRequest,
   createListTaskConflictsRequest,
   createResolveTaskConflictRequest,
   type LocalChangeDto,
@@ -26,6 +29,7 @@ describe("API route adapter skeleton", () => {
       "POST /sync/delta/pull",
       "GET /sync/conflicts",
       "POST /sync/conflicts/resolve",
+      "GET /sync/events",
     ]);
   });
 
@@ -355,6 +359,36 @@ describe("API route adapter skeleton", () => {
       },
     });
   });
+
+  it("routes realtime sync event catch-up requests without opening WebSockets", async () => {
+    const router = createRouter();
+
+    await expect(
+      router.handle({
+        method: "GET",
+        path: "/sync/events",
+        body: createListSyncEventsRequest({
+          workspaceId: "workspace-a",
+          deviceId: "desktop-1",
+          afterSequence: 0,
+          limit: 10,
+        }),
+      }),
+    ).resolves.toMatchObject({
+      status: 200,
+      body: {
+        events: [
+          {
+            id: "event-1",
+            workspaceId: "workspace-a",
+            sequence: 1,
+            type: "task.changed",
+          },
+        ],
+        latestSequence: 1,
+      },
+    });
+  });
 });
 
 function createRouter() {
@@ -368,7 +402,23 @@ function createRouter() {
       store: createInMemorySyncStore(),
       now: () => new Date("2026-05-16T12:00:00.000Z"),
     }),
+    syncEventApi: seededSyncEventApi(),
   });
+}
+
+function seededSyncEventApi() {
+  const eventApi = createSyncEventApi({
+    store: createInMemorySyncEventStore(),
+    now: () => new Date("2026-05-16T12:00:00.000Z"),
+  });
+  void eventApi.publishEvent({
+    workspaceId: "workspace-a",
+    type: "task.changed",
+    taskId: "task-1",
+    changeId: "change-1",
+    payload: { title: "Seeded event" },
+  });
+  return eventApi;
 }
 
 function actorHeaders(workspaceId: string, role: string) {

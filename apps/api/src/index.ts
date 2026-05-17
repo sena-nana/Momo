@@ -1,15 +1,20 @@
 import {
   SYNC_CONTRACT_VERSION,
+  createSyncEvent,
   createTaskConflict,
   type DeltaPullRequest,
   type DeltaPullResponse,
   type DeltaPushRequest,
   type DeltaPushResponse,
+  type ListSyncEventsRequest,
+  type ListSyncEventsResponse,
   type ListTaskConflictsRequest,
   type ListTaskConflictsResponse,
   type LocalChangeDto,
   type ResolveTaskConflictRequest,
   type ResolveTaskConflictResponse,
+  type SyncEventDto,
+  type SyncEventTypeDto,
   type TaskConflictDto,
   type TaskDto,
   type TaskStatusDto,
@@ -27,6 +32,34 @@ export interface SyncApi {
   resolveConflict(
     request: ResolveTaskConflictRequest,
   ): Promise<ResolveTaskConflictResponse>;
+}
+
+export interface SyncEventApi {
+  publishEvent(input: PublishSyncEventInput): Promise<SyncEventDto>;
+  listEvents(request: ListSyncEventsRequest): Promise<ListSyncEventsResponse>;
+}
+
+export interface PublishSyncEventInput {
+  workspaceId: string;
+  type: SyncEventTypeDto;
+  taskId?: string;
+  changeId?: string;
+  conflictId?: string;
+  payload: unknown;
+}
+
+export interface SyncEventStore {
+  publish(input: PublishSyncEventInput, now: Date): Promise<SyncEventDto>;
+  list(
+    workspaceId: string,
+    afterSequence: number,
+    limit: number,
+  ): Promise<SyncEventSnapshot>;
+}
+
+export interface SyncEventSnapshot {
+  events: SyncEventDto[];
+  latestSequence: number;
 }
 
 export interface SyncStore {
@@ -73,6 +106,11 @@ interface StoredWorkspace {
   deleteVersions: Map<string, number>;
   appliedChangeIds: Set<string>;
   conflicts: Map<string, TaskConflictDto>;
+}
+
+interface StoredEventWorkspace {
+  nextSequence: number;
+  events: SyncEventDto[];
 }
 
 interface TaskPayload {
@@ -184,6 +222,86 @@ export function createSyncApi({ store, now = () => new Date() }: SyncApiOptions)
         resolvedTask: result.resolvedTask,
         serverCursor: await store.currentCursor(request.workspaceId),
         serverTime: now().toISOString(),
+      };
+    },
+  };
+}
+
+export function createSyncEventApi({
+  store,
+  now = () => new Date(),
+}: {
+  store: SyncEventStore;
+  now?: () => Date;
+}): SyncEventApi {
+  return {
+    async publishEvent(input) {
+      return store.publish(input, now());
+    },
+
+    async listEvents(request) {
+      assertSupportedContract(request.contractVersion);
+      const snapshot = await store.list(
+        request.workspaceId,
+        request.afterSequence,
+        request.limit,
+      );
+
+      return {
+        contractVersion: SYNC_CONTRACT_VERSION,
+        events: snapshot.events,
+        latestSequence: snapshot.latestSequence,
+        serverTime: now().toISOString(),
+      };
+    },
+  };
+}
+
+export function createInMemorySyncEventStore(): SyncEventStore {
+  const workspaces = new Map<string, StoredEventWorkspace>();
+
+  function workspaceFor(workspaceId: string) {
+    let workspace = workspaces.get(workspaceId);
+    if (!workspace) {
+      workspace = {
+        nextSequence: 1,
+        events: [],
+      };
+      workspaces.set(workspaceId, workspace);
+    }
+    return workspace;
+  }
+
+  return {
+    async publish(input, currentTime) {
+      const workspace = workspaceFor(input.workspaceId);
+      const sequence = workspace.nextSequence;
+      const event = createSyncEvent({
+        id: `event-${sequence}`,
+        workspaceId: input.workspaceId,
+        sequence,
+        type: input.type,
+        taskId: input.taskId,
+        changeId: input.changeId,
+        conflictId: input.conflictId,
+        payload: input.payload,
+        now: currentTime,
+      });
+
+      workspace.nextSequence += 1;
+      workspace.events.push(event);
+      return event;
+    },
+
+    async list(workspaceId, afterSequence, limit) {
+      const workspace = workspaceFor(workspaceId);
+      const safeLimit = Math.max(0, limit);
+
+      return {
+        events: workspace.events
+          .filter((event) => event.sequence > afterSequence)
+          .slice(0, safeLimit),
+        latestSequence: workspace.nextSequence - 1,
       };
     },
   };

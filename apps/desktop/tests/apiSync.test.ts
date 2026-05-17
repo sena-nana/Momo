@@ -3,11 +3,17 @@ import {
   SYNC_CONTRACT_VERSION,
   createDeltaPullRequest,
   createDeltaPushRequest,
+  createListSyncEventsRequest,
   createListTaskConflictsRequest,
   createResolveTaskConflictRequest,
   type LocalChangeDto,
 } from "../../../packages/contracts/src";
-import { createInMemorySyncStore, createSyncApi } from "../../../apps/api/src";
+import {
+  createInMemorySyncEventStore,
+  createInMemorySyncStore,
+  createSyncApi,
+  createSyncEventApi,
+} from "../../../apps/api/src";
 
 describe("API sync service skeleton", () => {
   it("accepts local task changes and exposes them through delta pull", async () => {
@@ -752,6 +758,61 @@ describe("API sync service skeleton", () => {
     ).resolves.toMatchObject({
       conflicts: [],
       serverCursor: "cursor-2",
+    });
+  });
+
+  it("publishes realtime sync events and catches up by sequence", async () => {
+    const eventApi = createSyncEventApi({
+      store: createInMemorySyncEventStore(),
+      now: () => new Date("2026-05-16T12:00:00.000Z"),
+    });
+
+    const first = await eventApi.publishEvent({
+      workspaceId: "local",
+      type: "task.changed",
+      taskId: "task-1",
+      changeId: "change-1",
+      payload: { title: "First edit" },
+    });
+    const second = await eventApi.publishEvent({
+      workspaceId: "local",
+      type: "conflict.raised",
+      taskId: "task-1",
+      changeId: "change-2",
+      conflictId: "conflict-change-2",
+      payload: { reason: "Task version conflict" },
+    });
+
+    expect(first).toMatchObject({
+      id: "event-1",
+      workspaceId: "local",
+      sequence: 1,
+      type: "task.changed",
+      taskId: "task-1",
+      changeId: "change-1",
+      createdAt: "2026-05-16T12:00:00.000Z",
+    });
+    expect(second).toMatchObject({
+      id: "event-2",
+      sequence: 2,
+      type: "conflict.raised",
+      conflictId: "conflict-change-2",
+    });
+
+    await expect(
+      eventApi.listEvents(
+        createListSyncEventsRequest({
+          workspaceId: "local",
+          deviceId: "desktop-1",
+          afterSequence: 1,
+          limit: 10,
+        }),
+      ),
+    ).resolves.toEqual({
+      contractVersion: SYNC_CONTRACT_VERSION,
+      events: [second],
+      latestSequence: 2,
+      serverTime: "2026-05-16T12:00:00.000Z",
     });
   });
 });

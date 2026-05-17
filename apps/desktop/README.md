@@ -56,6 +56,7 @@ npm install
 ## 共享契约
 
 - `packages/contracts` 定义 Task DTO、LocalChange DTO、Delta Push/Pull 请求响应类型。
+- BE-04 realtime events are currently contract and in-memory semantics only: `SyncEventDto`、`createListSyncEventsRequest()` 与 HTTP-like `GET /sync/events` 只验证按 sequence catch up。
 - 当前仅做纯 TypeScript contract，不接生产后端、不实现 OIDC / PostgreSQL / WebSocket。
 
 ## 本地同步前置层
@@ -102,6 +103,7 @@ npm install
 - 本地同步演示成功或失败后也会刷新 `Sync history`，让本次手动运行结果可追溯。
 - 本地 sync errors refresh `Sync state` as well，所以 HTTP-like transport 或 runner 写回的 `lastError` 会显示在 Settings。
 - 当前没有真实网络请求、账号、后台任务或定时同步；这些仍属于后续 BE-01 / BE-04 范围。
+- `GET /sync/events` does not start a WebSocket server；默认 Settings route 仍只运行 local simulation，不订阅实时事件、不切换到远程 runner。
 
 ## Manual acceptance
 
@@ -123,6 +125,7 @@ npm install
 - The local BE-03 boundary is complete enough for desktop-only validation: push/pull adapters, cursor state, run history, pending change diagnostics, rejected/conflict visibility, remote config display, and local acceptance guardrails are all covered.
 - Production sync still needs BE-01 / IF-01 production backend prerequisites before the desktop default can talk to a real service: identity, tenant storage, RLS/persistence, deployment, and operational policy.
 - Next roadmap boundary: BE-04 realtime events can build on the existing contract and HTTP-like route semantics, but should still keep the default Settings route on local simulation until production backend prerequisites exist.
+- BE-04 realtime events are currently contract and in-memory semantics only；这一阶段只固化 event envelope、sequence catch-up 和 HTTP-like `GET /sync/events`，does not start a WebSocket server、Redis/event bus 或生产后端。
 - Continue to keep the default Settings route on local simulation; do not switch it to remote sync or background sync by configuration alone.
 
 ## 当前限制

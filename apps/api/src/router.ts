@@ -1,6 +1,7 @@
 import type {
   DeltaPullRequest,
   DeltaPushRequest,
+  ListSyncEventsRequest,
   ListTaskConflictsRequest,
   ResolveTaskConflictRequest,
 } from "../../../packages/contracts/src";
@@ -11,7 +12,7 @@ import type {
   TaskService,
   UpdateTaskInput,
 } from "./tasks";
-import type { SyncApi } from "./index";
+import type { SyncApi, SyncEventApi } from "./index";
 
 export interface ApiRequest {
   method: string;
@@ -43,16 +44,19 @@ export const API_ROUTES = [
     path: "/sync/conflicts/resolve",
     name: "sync.resolveConflict",
   },
+  { method: "GET", path: "/sync/events", name: "sync.listEvents" },
 ] as const;
 
 interface ApiRouterOptions {
   taskService: TaskService;
   syncApi: SyncApi;
+  syncEventApi?: SyncEventApi;
 }
 
 export function createApiRouter({
   taskService,
   syncApi,
+  syncEventApi,
 }: ApiRouterOptions): ApiRouter {
   return {
     async handle(request) {
@@ -65,7 +69,7 @@ export function createApiRouter({
         }
 
         if (segments[0] === "sync") {
-          return await handleSyncRoute(syncApi, request, segments, body);
+          return await handleSyncRoute(syncApi, syncEventApi, request, segments, body);
         }
 
         return json(404, { error: "Route not found" });
@@ -121,6 +125,7 @@ async function handleTaskRoute(
 
 async function handleSyncRoute(
   syncApi: SyncApi,
+  syncEventApi: SyncEventApi | undefined,
   request: ApiRequest,
   segments: string[],
   body: unknown,
@@ -142,6 +147,13 @@ async function handleSyncRoute(
       body as ResolveTaskConflictRequest,
     );
     return json(response.status === "pending_manual" ? 202 : 200, response);
+  }
+
+  if (request.method === "GET" && segments.join("/") === "sync/events") {
+    if (!syncEventApi) {
+      throw new Error("Sync event API not configured");
+    }
+    return json(200, await syncEventApi.listEvents(body as ListSyncEventsRequest));
   }
 
   return json(404, { error: "Route not found" });
@@ -196,6 +208,7 @@ function errorResponse(error: unknown) {
   if (
     message === "Task not found" ||
     message === "Conflict not found" ||
+    message === "Sync event API not configured" ||
     message === "Route not found"
   ) {
     return json(404, { error: message });

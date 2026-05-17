@@ -3,8 +3,10 @@ import {
   SYNC_CONTRACT_VERSION,
   createDeltaPullRequest,
   createDeltaPushRequest,
+  createListSyncEventsRequest,
   createListTaskConflictsRequest,
   createResolveTaskConflictRequest,
+  createSyncEvent,
   createTaskConflict,
   type LocalChangeDto,
 } from "../../../packages/contracts/src";
@@ -108,6 +110,45 @@ describe("sync contracts", () => {
       contractVersion: SYNC_CONTRACT_VERSION,
       workspaceId: "local",
       deviceId: "desktop-1",
+    });
+  });
+
+  it("builds realtime sync event envelopes and catch-up requests", () => {
+    expect(
+      createSyncEvent({
+        id: "event-1",
+        workspaceId: "local",
+        sequence: 7,
+        type: "task.changed",
+        taskId: "task-1",
+        changeId: "change-1",
+        payload: { title: "Updated" },
+        now: new Date("2026-05-16T07:00:00.000Z"),
+      }),
+    ).toEqual({
+      id: "event-1",
+      workspaceId: "local",
+      sequence: 7,
+      type: "task.changed",
+      taskId: "task-1",
+      changeId: "change-1",
+      payload: { title: "Updated" },
+      createdAt: "2026-05-16T07:00:00.000Z",
+    });
+
+    expect(
+      createListSyncEventsRequest({
+        workspaceId: "local",
+        deviceId: "desktop-1",
+        afterSequence: 6,
+        limit: 25,
+      }),
+    ).toEqual({
+      contractVersion: SYNC_CONTRACT_VERSION,
+      workspaceId: "local",
+      deviceId: "desktop-1",
+      afterSequence: 6,
+      limit: 25,
     });
   });
 });
